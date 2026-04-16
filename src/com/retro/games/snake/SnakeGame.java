@@ -6,8 +6,11 @@ import java.util.ArrayList;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.JFrame;
-import javax.swing.Timer;
-// --- IMPORTACIONES AÑADIDAS PARA LA BASE DE DATOS ---
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import java.io.File;
+
 import com.retro.main.model.Usuario;
 import com.retro.main.repository.UsuarioRepository;
 
@@ -30,16 +33,15 @@ public class SnakeGame extends JPanel {
     private boolean levelCleared = false;
     private boolean gameFinished = false;
 
-    // --- NUEVAS VARIABLES PARA EL TIEMPO ---
     private long startTime;
     private boolean timerStarted = false;
     private int tiempoFinalSegundos = 0;
 
-    // --- VARIABLES PARA LA SESIÓN ---
     private Usuario jugadorActual;
     private UsuarioRepository repo;
 
-    // --- CONSTRUCTOR MODIFICADO SOLO PARA RECIBIR DATOS ---
+    private Clip musicaFondo;
+
     public SnakeGame(Usuario jugador, UsuarioRepository repo) {
         this.jugadorActual = jugador;
         this.repo = repo;
@@ -47,7 +49,52 @@ public class SnakeGame extends JPanel {
         this.setBackground(new Color(15, 15, 20)); 
         this.setFocusable(true);
         this.addKeyListener(new MyKeyAdapter());
+        
         loadLevel(1);
+    }
+
+    private void playMusicaFondo() {
+        try {
+            if (musicaFondo != null) {
+                musicaFondo.stop();
+                musicaFondo.setFramePosition(0); 
+            } else {
+                File musicPath = new File("res/musica_fondo.wav");
+                if (musicPath.exists()) {
+                    AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
+                    musicaFondo = AudioSystem.getClip();
+                    musicaFondo.open(audioInput);
+                    musicaFondo.loop(Clip.LOOP_CONTINUOUSLY);
+                }
+            }
+            if (musicaFondo != null) musicaFondo.start();
+        } catch (Exception e) {
+            System.err.println("Error música: " + e.getMessage());
+        }
+    }
+
+    private void stopMusicaFondo() {
+        if (musicaFondo != null && musicaFondo.isRunning()) {
+            musicaFondo.stop();
+        }
+    }
+
+    private void playSonidoEfecto(String archivo) {
+        try {
+            File soundPath = new File("res/" + archivo);
+            if (soundPath.exists()) {
+                AudioInputStream audioInput = AudioSystem.getAudioInputStream(soundPath);
+                Clip clip = AudioSystem.getClip();
+                clip.open(audioInput);
+                clip.start();
+            }
+        } catch (Exception e) {
+            System.err.println("Error efecto " + archivo + ": " + e.getMessage());
+        }
+    }
+
+    private void playSonidoComida() {
+        playSonidoEfecto("comida.wav");
     }
 
     public void loadLevel(int level) {
@@ -56,7 +103,8 @@ public class SnakeGame extends JPanel {
         this.levelCleared = false;
         this.gameFinished = false;
         
-        // Si volvemos al nivel 1, reiniciamos el cronómetro
+        playMusicaFondo();
+
         if (level == 1) {
             timerStarted = false;
             tiempoFinalSegundos = 0;
@@ -65,7 +113,6 @@ public class SnakeGame extends JPanel {
         snake.clear();
         applesInLevel.clear();
         enemies.clear();
-
         snake.add(new Point(TILE_SIZE * 2, TILE_SIZE * 2)); 
         generateMapData(level);
         repaint();
@@ -119,12 +166,10 @@ public class SnakeGame extends JPanel {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Fondo: Rejilla sutil
         g2d.setColor(new Color(25, 25, 35));
         for(int i=0; i<WIDTH; i+=TILE_SIZE) g2d.drawLine(i, 0, i, 575);
         for(int i=0; i<575; i+=TILE_SIZE) g2d.drawLine(0, i, WIDTH, i);
 
-        // Muros (Maze)
         for (int y = 0; y < GRID_HEIGHT; y++) {
             for (int x = 0; x < GRID_WIDTH; x++) {
                 if (maze[y][x] == 1) {
@@ -137,7 +182,6 @@ public class SnakeGame extends JPanel {
             }
         }
 
-        // Manzanas
         for (Point p : applesInLevel) {
             int x = p.x; int y = p.y;
             g2d.setColor(new Color(101, 67, 33)); g2d.fillRect(x + 11, y + 2, 3, 6);
@@ -148,7 +192,6 @@ public class SnakeGame extends JPanel {
             g2d.setColor(new Color(255, 255, 255, 130)); g2d.fillOval(x + 7, y + 10, 5, 3);
         }
 
-        // Enemigos
         for (Point e : enemies) {
             g2d.setColor(new Color(255, 255, 0));
             g2d.fillArc(e.x + 3, e.y + 3, TILE_SIZE - 6, TILE_SIZE - 6, 0, 180);
@@ -157,7 +200,6 @@ public class SnakeGame extends JPanel {
             g2d.fillOval(e.x + 7, e.y + 8, 4, 4); g2d.fillOval(e.x + 14, e.y + 8, 4, 4);
         }
 
-        // Snake
         for (int i = snake.size() - 1; i >= 0; i--) {
             Point p = snake.get(i);
             if (i == 0) { 
@@ -173,7 +215,6 @@ public class SnakeGame extends JPanel {
             }
         }
 
-        // UI Inferior
         g2d.setPaint(new GradientPaint(0, 575, new Color(30, 30, 35), 0, HEIGHT, new Color(15, 15, 20)));
         g2d.fillRect(0, 575, WIDTH, 50);
         g2d.setColor(Color.CYAN); g2d.drawRect(0, 575, WIDTH-1, 49);
@@ -231,16 +272,13 @@ public class SnakeGame extends JPanel {
 
         Point head = new Point(snake.get(0).x + dx, snake.get(0).y + dy);
         
-        // Teletransporte por bordes
         if (head.x < 0) head.x = WIDTH - TILE_SIZE;
         if (head.x >= WIDTH) head.x = 0;
         if (head.y < 0) head.y = 550;
         if (head.y > 550) head.y = 0;
 
-        // 1. Comprobar colisión ANTES de mover enemigos
-        if (maze[head.y/TILE_SIZE][head.x/TILE_SIZE] == 1 || checkCollision(head)) {
-            running = false;
-            repaint();
+        if (maze[head.y/TILE_SIZE][head.x/TILE_SIZE] == 1 || checkCuerpo(head)) {
+            morir("choque.wav");
             return;
         } else {
             snake.add(0, head);
@@ -248,8 +286,12 @@ public class SnakeGame extends JPanel {
             for (Point p : applesInLevel) { if (p.equals(head)) { eaten = p; break; } }
             
             if (eaten != null) {
+                playSonidoComida(); 
                 applesInLevel.remove(eaten);
                 if (applesInLevel.isEmpty()) {
+                    stopMusicaFondo(); 
+                    playSonidoEfecto("victoria.wav"); // Sonido renombrado a victoria
+                    
                     if (currentLevel == 5) {
                         gameFinished = true;
                         long endTime = System.currentTimeMillis();
@@ -266,22 +308,31 @@ public class SnakeGame extends JPanel {
                 snake.remove(snake.size() - 1); 
             }
 
-            // 2. Mover enemigos
             moveEnemies();
 
-            // 3. Comprobar colisión DESPUÉS de mover enemigos 
-            // (Por si el enemigo se ha movido justo a la cabeza de la serpiente)
-            if (checkCollision(snake.get(0))) {
-                running = false;
+            if (checkFantasma(snake.get(0))) {
+                morir("fantasma.wav");
+                return;
             }
         }
         repaint();
     }
     
-    private boolean checkCollision(Point p) {
-        for (int i = 1; i < snake.size(); i++) if (snake.get(i).equals(p)) return true;
-        for (Point e : enemies) if (e.equals(p)) return true;
+    private boolean checkCuerpo(Point head) {
+        for (int i = 1; i < snake.size(); i++) if (snake.get(i).equals(head)) return true;
         return false;
+    }
+
+    private boolean checkFantasma(Point head) {
+        for (Point e : enemies) if (e.equals(head)) return true;
+        return false;
+    }
+
+    private void morir(String sonidoCausa) {
+        running = false;
+        stopMusicaFondo(); 
+        playSonidoEfecto(sonidoCausa);   
+        repaint();
     }
 
     private void moveEnemies() {
@@ -302,6 +353,7 @@ public class SnakeGame extends JPanel {
             int key = e.getKeyCode();
             if (gameFinished) {
                 if (key == KeyEvent.VK_M) {
+                    stopMusicaFondo();
                     JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(SnakeGame.this);
                     if(topFrame != null) topFrame.dispose();
                 }
