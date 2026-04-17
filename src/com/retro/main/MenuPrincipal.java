@@ -80,7 +80,8 @@ public class MenuPrincipal extends JFrame {
         panelFondo.add(titulo);
         panelFondo.add(Box.createRigidArea(new Dimension(0, 25)));
 
-        panelFondo.add(crearBotonPro("NUEVO JUGADOR", null, e -> mostrarRegistro()));
+        // Botón de registro con la nueva lógica
+        panelFondo.add(crearBotonPro("NUEVO JUGADOR / SESIÓN", null, e -> mostrarRegistro()));
         panelFondo.add(Box.createRigidArea(new Dimension(0, 12)));
         
         panelFondo.add(crearBotonPro("SNAKE ARCADE", "res/snake_icon.png", e -> {
@@ -137,6 +138,15 @@ public class MenuPrincipal extends JFrame {
     }
 
     private void mostrarRegistro() {
+        // --- NUEVA VALIDACIÓN ---
+        if (usuarioSesion != null) {
+            JOptionPane.showMessageDialog(this, 
+                "Ya tienes una sesión iniciada como: " + usuarioSesion.getUsername(), 
+                "Sesión Activa", 
+                JOptionPane.INFORMATION_MESSAGE);
+            return; // Salimos del método para que no pida nombre otra vez
+        }
+
         while (true) {
             String nombre = JOptionPane.showInputDialog(this, "Nombre del nuevo jugador:");
             if (nombre == null) break;
@@ -246,7 +256,6 @@ public class MenuPrincipal extends JFrame {
                 if (panelJuego instanceof SnakeGame) {
                     ((SnakeGame) panelJuego).pararMusica();
                 }
-                // --- AÑADE ESTO PARA EL TETRIS ---
                 if (panelJuego instanceof TetrisGame) {
                     ((TetrisGame) panelJuego).detenerJuego();
                 }
