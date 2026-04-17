@@ -78,13 +78,11 @@ public class PongGame extends JPanel implements ActionListener {
     private void update() {
         if (gameFinished) return; 
 
-        // 1. Movimiento de palas (SIEMPRE activo)
         if (wPressed && p1Y > 0) p1Y -= 5;
         if (sPressed && p1Y < HEIGHT - PADDLE_HEIGHT) p1Y += 5;
         if (upPressed && p2Y > 0) p2Y -= 5;
         if (downPressed && p2Y < HEIGHT - PADDLE_HEIGHT) p2Y += 5;
 
-        // 2. Si estamos esperando, no hacemos nada más
         if (waiting) {
             waitFrames++;
             if (waitFrames >= 200) { 
@@ -94,7 +92,6 @@ public class PongGame extends JPanel implements ActionListener {
             return; 
         }
 
-        // 3. Cronómetro
         frameCounter++;
         if (frameCounter >= 100) { 
             timeLeft--;
@@ -105,28 +102,30 @@ public class PongGame extends JPanel implements ActionListener {
             }
         }
 
-        // 4. Movimiento de pelota
         ballX += ballXSpeed;
         ballY += ballYSpeed;
 
-        // Rebotes en paredes
         if (ballY <= 0 || ballY >= HEIGHT - BALL_SIZE) {
             ballYSpeed *= -1;
             playSound("choque.wav"); 
         }
 
-        // Colisiones con palas (Ajustadas para que no "tiemblen")
-        if (ballX <= 35 && ballY + BALL_SIZE >= p1Y && ballY <= p1Y + PADDLE_HEIGHT && ballXSpeed < 0) {
+        // --- CORRECCIÓN COLISIÓN JUGADOR 1 ---
+        // Explicación: ballX debe estar entre 20 (inicio pala) y 35 (final pala). 
+        // Si ballX es menor de 20, la bola ya pasó la pala y es GOL.
+        if (ballX >= 20 && ballX <= 35 && ballY + BALL_SIZE >= p1Y && ballY <= p1Y + PADDLE_HEIGHT && ballXSpeed < 0) {
             ballXSpeed = Math.abs(ballXSpeed);
+            ballX = 36; // La sacamos de la zona de colisión
             playSound("choque.wav"); 
         }
 
+        // --- COLISIÓN JUGADOR 2 (Ya estaba bien, pero aseguramos rango) ---
         if (ballX >= WIDTH - 50 && ballX <= WIDTH - 35 && ballY + BALL_SIZE >= p2Y && ballY <= p2Y + PADDLE_HEIGHT && ballXSpeed > 0) {
             ballXSpeed = -Math.abs(ballXSpeed);
+            ballX = WIDTH - 51; 
             playSound("choque.wav"); 
         }
 
-        // Goles (El resetBall ahora es fulminante)
         if (ballX < -BALL_SIZE) { 
             score2++; 
             playSound("gol.wav"); 
@@ -140,16 +139,11 @@ public class PongGame extends JPanel implements ActionListener {
     }
 
     private void resetBall() {
-        // La movemos al centro EXACTO antes de pintar el siguiente frame
         ballX = WIDTH / 2 - BALL_SIZE / 2;
         ballY = HEIGHT / 2 - BALL_SIZE / 2;
-        
-        // Invertimos dirección pero la dejamos quieta activando 'waiting'
         ballXSpeed *= -1;
         waiting = true;
         waitFrames = 0;
-        
-        // Forzamos un repintado para que el usuario vea la pelota en el centro YA
         repaint();
     }
 

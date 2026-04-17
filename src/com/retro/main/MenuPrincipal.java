@@ -228,20 +228,27 @@ public class MenuPrincipal extends JFrame {
         return banner;
     }
 
-    // --- LANZAR JUEGO MODIFICADO PARA DETENER SONIDOS ---
     private void lanzarJuego(JPanel panelJuego, String tituloVentana) {
         JFrame v = new JFrame(tituloVentana);
-        v.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Importante
+        v.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        v.setResizable(false); 
+        
         v.add(panelJuego); 
         v.pack(); 
         v.setLocationRelativeTo(null); 
         
-        // Listener para detectar el cierre de la ventana
         v.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
                 if (panelJuego instanceof PongGame) {
                     ((PongGame) panelJuego).detenerJuego();
+                }
+                if (panelJuego instanceof SnakeGame) {
+                    ((SnakeGame) panelJuego).pararMusica();
+                }
+                // --- AÑADE ESTO PARA EL TETRIS ---
+                if (panelJuego instanceof TetrisGame) {
+                    ((TetrisGame) panelJuego).detenerJuego();
                 }
             }
         });

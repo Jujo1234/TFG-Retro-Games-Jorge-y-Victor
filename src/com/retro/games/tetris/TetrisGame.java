@@ -107,6 +107,12 @@ public class TetrisGame extends JPanel implements ActionListener {
         }
     }
 
+    // MÉTODO PARA DETENER TODO DESDE EL MENÚ
+    public void pararMusica() {
+        stopMusica();
+        if (musicaFondo != null) musicaFondo.close();
+    }
+
     public void start() {
         clearBoard();
         score = 0;
@@ -248,13 +254,20 @@ public class TetrisGame extends JPanel implements ActionListener {
         g.setColor(color);
         g.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
         
-        // Bordes para efecto 3D
         g.setColor(color.brighter());
         g.drawLine(x, y + TILE_SIZE - 1, x, y);
         g.drawLine(x, y, x + TILE_SIZE - 1, y);
         g.setColor(color.darker());
         g.drawLine(x + 1, y + TILE_SIZE - 1, x + TILE_SIZE - 1, y + TILE_SIZE - 1);
         g.drawLine(x + TILE_SIZE - 1, y + TILE_SIZE - 1, x + TILE_SIZE - 1, y + 1);
+    }
+
+    // --- MÉTODO PARA DETENER EL TIMER AL CERRAR ---
+    public void detenerJuego() {
+        if (timer != null) {
+            timer.stop();
+            stopMusica(); // Aprovechamos para apagar la música también
+        }
     }
 
     class Tetromino {

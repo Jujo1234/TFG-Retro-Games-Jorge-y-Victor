@@ -152,8 +152,9 @@ public class Game2048 extends JPanel {
                 if (board[r][c] == 2048) {
                     win = true;
                     guardarPuntosBaseDatos();
-                    playEfecto("victoria.wav"); // <--- SUENA ANTES
-                    mostrarMenuFin("¡BRUTAL! Has llegado al 2048.");
+                    playEfecto("victoria.wav"); 
+                    // MODIFICACIÓN AQUÍ: Añadimos los puntos al mensaje
+                    mostrarMenuFin("¡BRUTAL! Has llegado al 2048.\nPuntos finales: " + score);
                     return;
                 }
             }
@@ -171,8 +172,9 @@ public class Game2048 extends JPanel {
         // Derrota
         gameOver = true;
         guardarPuntosBaseDatos();
-        playEfecto("derrota.wav"); // <--- SUENA ANTES
-        mostrarMenuFin("Game Over. No hay más movimientos.");
+        playEfecto("derrota.wav"); 
+        // MODIFICACIÓN AQUÍ: Añadimos los puntos al mensaje
+        mostrarMenuFin("Game Over. No hay más movimientos.\nPuntos finales: " + score);
     }
 
     private void guardarPuntosBaseDatos() {
@@ -185,7 +187,6 @@ public class Game2048 extends JPanel {
     private void mostrarMenuFin(String mensaje) {
         Object[] opciones = {"Jugar otra vez", "Volver al Menú"};
         
-        // Aumentamos un poco el tiempo (800ms) para que el sonido empiece a sonar antes de la ventana
         Timer timerMenu = new Timer(800, e -> {
             int seleccion = JOptionPane.showOptionDialog(
                 this,

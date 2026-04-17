@@ -79,6 +79,12 @@ public class SnakeGame extends JPanel {
         }
     }
 
+    // MÉTODO PARA DETENER TODO DESDE EL MENÚ
+    public void pararMusica() {
+        stopMusicaFondo();
+        if (musicaFondo != null) musicaFondo.close();
+    }
+
     private void playSonidoEfecto(String archivo) {
         try {
             File soundPath = new File("res/" + archivo);
@@ -290,7 +296,7 @@ public class SnakeGame extends JPanel {
                 applesInLevel.remove(eaten);
                 if (applesInLevel.isEmpty()) {
                     stopMusicaFondo(); 
-                    playSonidoEfecto("victoria.wav"); // Sonido renombrado a victoria
+                    playSonidoEfecto("victoria.wav"); 
                     
                     if (currentLevel == 5) {
                         gameFinished = true;
