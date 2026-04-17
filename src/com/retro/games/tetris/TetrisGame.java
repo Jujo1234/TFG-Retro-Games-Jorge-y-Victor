@@ -4,6 +4,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Random;
+// --- IMPORTACIONES PARA AUDIO ---
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import java.io.File;
+
 // --- IMPORTACIONES PARA DB ---
 import com.retro.main.model.Usuario;
 import com.retro.main.repository.UsuarioRepository;
@@ -23,6 +29,9 @@ public class TetrisGame extends JPanel implements ActionListener {
     
     private int[][] board;
     private Tetromino curPiece;
+
+    // --- VARIABLES DE AUDIO ---
+    private Clip musicaFondo;
 
     // --- VARIABLES DE SESIÓN ---
     private Usuario jugadorActual;
@@ -53,10 +62,49 @@ public class TetrisGame extends JPanel implements ActionListener {
             }
         });
 
-        // Iniciamos con un delay para que la ventana cargue bien
-        Timer initDelay = new Timer(200, e -> start());
+        // Iniciamos música y juego con delay
+        Timer initDelay = new Timer(200, e -> {
+            playMusicaFondo();
+            start();
+        });
         initDelay.setRepeats(false);
         initDelay.start();
+    }
+
+    // --- LÓGICA DE AUDIO ---
+    private void playMusicaFondo() {
+        try {
+            File musicPath = new File("res/musica_tetris.wav");
+            if (musicPath.exists()) {
+                AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
+                musicaFondo = AudioSystem.getClip();
+                musicaFondo.open(audioInput);
+                musicaFondo.loop(Clip.LOOP_CONTINUOUSLY);
+                musicaFondo.start();
+            }
+        } catch (Exception e) {
+            System.err.println("Error música Tetris: " + e.getMessage());
+        }
+    }
+
+    private void playEfecto(String archivo) {
+        try {
+            File soundPath = new File("res/" + archivo);
+            if (soundPath.exists()) {
+                AudioInputStream audioInput = AudioSystem.getAudioInputStream(soundPath);
+                Clip clip = AudioSystem.getClip();
+                clip.open(audioInput);
+                clip.start();
+            }
+        } catch (Exception e) {
+            System.err.println("Error efecto: " + archivo);
+        }
+    }
+
+    private void stopMusica() {
+        if (musicaFondo != null && musicaFondo.isRunning()) {
+            musicaFondo.stop();
+        }
     }
 
     public void start() {
@@ -75,12 +123,14 @@ public class TetrisGame extends JPanel implements ActionListener {
     private void newPiece() {
         curPiece.setRandomShape();
         curX = BOARD_WIDTH / 2;
-        curY = 1; // Empezamos un poco más abajo para evitar colisiones con el borde superior
+        curY = 1;
 
         if (!tryMove(curPiece, curX, curY)) {
             isStarted = false;
             timer.stop();
-            // GUARDAR PUNTOS AL PERDER
+            stopMusica(); // Parar música al perder
+            playEfecto("derrota.wav"); // Sonido reutilizado
+
             if (jugadorActual != null) {
                 jugadorActual.setPuntos_tetris(score);
                 repo.save(jugadorActual);
@@ -138,6 +188,7 @@ public class TetrisGame extends JPanel implements ActionListener {
         }
         if (linesFilled > 0) {
             score += linesFilled * 100;
+            playEfecto("puntos.wav"); // Sonido al ganar puntos
             repaint();
         }
     }
@@ -155,7 +206,10 @@ public class TetrisGame extends JPanel implements ActionListener {
         Object[] options = {"Reintentar", "Cerrar"};
         int n = JOptionPane.showOptionDialog(this, "GAME OVER\nScore: " + score, "Tetris",
                 JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
-        if (n == JOptionPane.YES_OPTION) start();
+        if (n == JOptionPane.YES_OPTION) {
+            playMusicaFondo();
+            start();
+        }
         else SwingUtilities.getWindowAncestor(this).dispose();
     }
 
@@ -168,14 +222,12 @@ public class TetrisGame extends JPanel implements ActionListener {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         
-        // Dibujar Tablero fijo
         for (int i = 0; i < BOARD_HEIGHT; i++) {
             for (int j = 0; j < BOARD_WIDTH; j++) {
                 if (board[i][j] != 0) drawSquare(g, j * TILE_SIZE, i * TILE_SIZE, board[i][j]);
             }
         }
 
-        // Dibujar Pieza actual
         if (isStarted && curPiece.getShape() != 0) {
             for (int i = 0; i < 4; i++) {
                 drawSquare(g, (curX + curPiece.x(i)) * TILE_SIZE, (curY + curPiece.y(i)) * TILE_SIZE, curPiece.getShape());
@@ -183,6 +235,7 @@ public class TetrisGame extends JPanel implements ActionListener {
         }
 
         g.setColor(Color.WHITE);
+        g.setFont(new Font("Monospaced", Font.BOLD, 18));
         g.drawString("PUNTOS: " + score, 10, BOARD_HEIGHT * TILE_SIZE + 30);
     }
 
@@ -194,21 +247,28 @@ public class TetrisGame extends JPanel implements ActionListener {
         Color color = colors[shape];
         g.setColor(color);
         g.fillRect(x + 1, y + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+        
+        // Bordes para efecto 3D
+        g.setColor(color.brighter());
+        g.drawLine(x, y + TILE_SIZE - 1, x, y);
+        g.drawLine(x, y, x + TILE_SIZE - 1, y);
+        g.setColor(color.darker());
+        g.drawLine(x + 1, y + TILE_SIZE - 1, x + TILE_SIZE - 1, y + TILE_SIZE - 1);
+        g.drawLine(x + TILE_SIZE - 1, y + TILE_SIZE - 1, x + TILE_SIZE - 1, y + 1);
     }
 
-    // Clase interna simplificada para evitar errores de coordenadas
     class Tetromino {
         private int[][] coords;
         private int shape;
         private final int[][][] table = {
-            {{0,0},{0,0},{0,0},{0,0}}, // Vacio
-            {{-1,0},{0,0},{1,0},{0,1}}, // T
-            {{0,0},{1,0},{0,1},{1,1}}, // Cuadrado
-            {{-1,-1},{0,-1},{0,0},{0,1}}, // L
-            {{1,-1},{0,-1},{0,0},{0,1}}, // J
-            {{0,-1},{0,0},{0,1},{0,2}}, // I
-            {{-1,0},{0,0},{0,1},{1,1}}, // S
-            {{-1,1},{0,1},{0,0},{1,0}}  // Z
+            {{0,0},{0,0},{0,0},{0,0}},
+            {{-1,0},{0,0},{1,0},{0,1}}, 
+            {{0,0},{1,0},{0,1},{1,1}}, 
+            {{-1,-1},{0,-1},{0,0},{0,1}}, 
+            {{1,-1},{0,-1},{0,0},{0,1}}, 
+            {{0,-1},{0,0},{0,1},{0,2}}, 
+            {{-1,0},{0,0},{0,1},{1,1}}, 
+            {{-1,1},{0,1},{0,0},{1,0}}  
         };
 
         public Tetromino() { coords = new int[4][2]; }

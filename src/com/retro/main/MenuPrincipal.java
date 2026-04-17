@@ -58,7 +58,6 @@ public class MenuPrincipal extends JFrame {
         panelFondo.setLayout(new BoxLayout(panelFondo, BoxLayout.Y_AXIS));
         panelFondo.setBorder(new EmptyBorder(10, 30, 15, 30));
 
-        // 1. BARRA SUPERIOR
         JPanel barraEstado = new JPanel(new BorderLayout());
         barraEstado.setOpaque(false);
         barraEstado.setMaximumSize(new Dimension(500, 25));
@@ -74,7 +73,6 @@ public class MenuPrincipal extends JFrame {
         panelFondo.add(barraEstado);
         panelFondo.add(Box.createRigidArea(new Dimension(0, 15)));
 
-        // 2. TÍTULO
         JLabel titulo = new JLabel("ARCADE MULTIGAME");
         titulo.setForeground(Color.CYAN);
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 34));
@@ -82,7 +80,6 @@ public class MenuPrincipal extends JFrame {
         panelFondo.add(titulo);
         panelFondo.add(Box.createRigidArea(new Dimension(0, 25)));
 
-        // 3. BOTONES (Centrados perfectamente)
         panelFondo.add(crearBotonPro("NUEVO JUGADOR", null, e -> mostrarRegistro()));
         panelFondo.add(Box.createRigidArea(new Dimension(0, 12)));
         
@@ -108,20 +105,16 @@ public class MenuPrincipal extends JFrame {
         panelFondo.add(Box.createRigidArea(new Dimension(0, 12)));
         
         panelFondo.add(crearBotonPro(" VER RANKING DE MÉRITOS", "res/trofeo_neon.png", e -> mostrarRanking()));
-        
         panelFondo.add(Box.createRigidArea(new Dimension(0, 25)));
 
-        // 4. BANNER
         panelFondo.add(cargarBannerJuegos());
         panelFondo.add(Box.createRigidArea(new Dimension(0, 20)));
 
-     // INFO BOX
         JPanel panelInfo = new JPanel(new GridLayout(0, 1));
         panelInfo.setOpaque(false);
         panelInfo.setBorder(new LineBorder(new Color(0, 255, 255, 30), 1));
         panelInfo.setMaximumSize(new Dimension(380, 85));
 
-        // AQUÍ ESTÁ EL CAMBIO: Texto traducido y limpio
         String infoTexto = "<html><center><font color='cyan'><b>SISTEMA ARCADE v2.0</b></font><br>"
                 + "<font color='#888888'>PROYECTO TFG - BASE DE DATOS ACTIVA<br>"
                 + "AUTORES: JORGE & VÍCTOR | ESTADO: CONECTADO</font></center></html>";
@@ -134,7 +127,6 @@ public class MenuPrincipal extends JFrame {
 
         panelFondo.add(Box.createRigidArea(new Dimension(0, 20)));
 
-        // BOTÓN SALIR
         JButton btnSalir = crearBotonPro("SALIR DE LA APP", null, e -> System.exit(0));
         btnSalir.setBackground(new Color(50, 15, 15));
         btnSalir.setForeground(new Color(255, 80, 80));
@@ -193,8 +185,6 @@ public class MenuPrincipal extends JFrame {
         boton.setMinimumSize(new Dimension(380, 50));
         boton.setMaximumSize(new Dimension(380, 50));
         boton.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
-        
-        // CORRECCIÓN: Alineación centrada para el conjunto icono + texto
         boton.setHorizontalAlignment(SwingConstants.CENTER); 
         boton.setHorizontalTextPosition(SwingConstants.RIGHT); 
 
@@ -212,7 +202,7 @@ public class MenuPrincipal extends JFrame {
                 if (icon.getIconWidth() > 0) {
                     Image img = icon.getImage().getScaledInstance(25, 25, Image.SCALE_SMOOTH);
                     boton.setIcon(new ImageIcon(img));
-                    boton.setIconTextGap(20); // Espacio entre icono y texto
+                    boton.setIconTextGap(20);
                 }
             } catch (Exception e) {}
         }
@@ -238,9 +228,25 @@ public class MenuPrincipal extends JFrame {
         return banner;
     }
 
+    // --- LANZAR JUEGO MODIFICADO PARA DETENER SONIDOS ---
     private void lanzarJuego(JPanel panelJuego, String tituloVentana) {
         JFrame v = new JFrame(tituloVentana);
-        v.add(panelJuego); v.pack(); v.setLocationRelativeTo(null); v.setVisible(true);
+        v.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Importante
+        v.add(panelJuego); 
+        v.pack(); 
+        v.setLocationRelativeTo(null); 
+        
+        // Listener para detectar el cierre de la ventana
+        v.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (panelJuego instanceof PongGame) {
+                    ((PongGame) panelJuego).detenerJuego();
+                }
+            }
+        });
+
+        v.setVisible(true);
         panelJuego.requestFocusInWindow();
     }
 

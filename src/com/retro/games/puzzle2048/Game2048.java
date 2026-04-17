@@ -5,6 +5,12 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Random;
+// --- IMPORTACIONES PARA AUDIO ---
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import java.io.File;
+
 // --- IMPORTACIONES PARA DB ---
 import com.retro.main.model.Usuario;
 import com.retro.main.repository.UsuarioRepository;
@@ -16,7 +22,6 @@ public class Game2048 extends JPanel {
     private boolean gameOver = false;
     private boolean win = false;
 
-    // --- VARIABLES DE SESIÓN ---
     private Usuario jugadorActual;
     private UsuarioRepository repo;
 
@@ -43,12 +48,27 @@ public class Game2048 extends JPanel {
                 if (moved) {
                     spawnRandom();
                     repaint();
-                    checkGameState(); // Comprobamos si ha ganado o perdido tras mover
+                    checkGameState(); 
                 }
             }
         });
         
         reiniciarJuego();
+    }
+
+    // --- SISTEMA DE AUDIO PARA EFECTOS ---
+    private void playEfecto(String archivo) {
+        try {
+            File soundPath = new File("res/" + archivo);
+            if (soundPath.exists()) {
+                AudioInputStream audioInput = AudioSystem.getAudioInputStream(soundPath);
+                Clip clip = AudioSystem.getClip();
+                clip.open(audioInput);
+                clip.start();
+            }
+        } catch (Exception e) {
+            System.err.println("Error al reproducir: " + archivo);
+        }
     }
 
     private void reiniciarJuego() {
@@ -74,7 +94,6 @@ public class Game2048 extends JPanel {
         }
     }
 
-    // --- LÓGICA DE MOVIMIENTO ---
     private boolean moveLeft() {
         boolean moved = false;
         for (int r = 0; r < 4; r++) {
@@ -126,7 +145,6 @@ public class Game2048 extends JPanel {
         }
     }
 
-    // --- GESTIÓN DE ESTADO Y MENÚS ---
     private void checkGameState() {
         // Victoria
         for (int r = 0; r < 4; r++) {
@@ -134,6 +152,7 @@ public class Game2048 extends JPanel {
                 if (board[r][c] == 2048) {
                     win = true;
                     guardarPuntosBaseDatos();
+                    playEfecto("victoria.wav"); // <--- SUENA ANTES
                     mostrarMenuFin("¡BRUTAL! Has llegado al 2048.");
                     return;
                 }
@@ -152,6 +171,7 @@ public class Game2048 extends JPanel {
         // Derrota
         gameOver = true;
         guardarPuntosBaseDatos();
+        playEfecto("derrota.wav"); // <--- SUENA ANTES
         mostrarMenuFin("Game Over. No hay más movimientos.");
     }
 
@@ -165,8 +185,8 @@ public class Game2048 extends JPanel {
     private void mostrarMenuFin(String mensaje) {
         Object[] opciones = {"Jugar otra vez", "Volver al Menú"};
         
-        // Un pequeño delay para que el usuario vea el tablero final antes del popup
-        Timer timer = new Timer(300, e -> {
+        // Aumentamos un poco el tiempo (800ms) para que el sonido empiece a sonar antes de la ventana
+        Timer timerMenu = new Timer(800, e -> {
             int seleccion = JOptionPane.showOptionDialog(
                 this,
                 mensaje + "\n¿Qué quieres hacer?",
@@ -185,8 +205,8 @@ public class Game2048 extends JPanel {
                 if (win != null) win.dispose();
             }
         });
-        timer.setRepeats(false);
-        timer.start();
+        timerMenu.setRepeats(false);
+        timerMenu.start();
     }
 
     @Override
@@ -195,12 +215,10 @@ public class Game2048 extends JPanel {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Dibujar Score
         g.setColor(new Color(119, 110, 101));
         g.setFont(new Font("Arial", Font.BOLD, 25));
         g.drawString("Puntos: " + score, 20, 40);
 
-        // Dibujar Tablero
         for (int r = 0; r < 4; r++) {
             for (int c = 0; c < 4; c++) {
                 drawTile(g2, board[r][c], 20 + c * 90, 70 + r * 90);
