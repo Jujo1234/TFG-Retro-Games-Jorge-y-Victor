@@ -1,7 +1,21 @@
+# Carpetas de compilación y ejecutables (Maven/Eclipse)
 /target/
-.metadata
+/bin/
+*.jar
+
+# Configuraciones de IDE (Eclipse/VS Code)
+.metadata/
+.settings/
 .classpath
 .project
-.settings/
-bin/
-target/
+
+# Paquetes de distribución
+*.zip
+
+# Entorno Node.js (librerías externas)
+node_modules/
+
+# Archivos del sistema
+.DS_Store
+
+#Esta clase es para evitar que se suban carpetas innecesarias al repositorio de github
