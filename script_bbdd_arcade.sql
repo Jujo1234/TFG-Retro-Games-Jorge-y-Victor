@@ -22,9 +22,11 @@
 DROP TABLE IF EXISTS `usuarios`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+
 CREATE TABLE `usuarios` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL, -- Columna añadida para el modo admin/login
   `puntos_snake` int(11) DEFAULT 0,
   `puntos_2048` int(11) DEFAULT 0,
   `puntos_tetris` int(11) DEFAULT 0,
@@ -32,19 +34,23 @@ CREATE TABLE `usuarios` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `usuarios`
 --
+-- NOTA: Tus datos antiguos deben actualizarse añadiendo el campo password.
+-- Ejemplo de inserción manual:
+-- INSERT INTO `usuarios` (username, password, puntos_snake, puntos_2048, puntos_tetris) VALUES ('admin', 'admin1234', 0, 0, 0);
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` VALUES (1,'322',34,0,0,'2026-04-13 10:09:43'),(2,'444',52,0,0,'2026-04-13 10:16:59'),(3,'jorge',0,0,0,'2026-04-13 10:26:23'),(4,'2',0,0,0,'2026-04-13 10:35:24');
+-- Aquí irían tus nuevos inserts con el formato correcto: (id, username, password, puntos_snake, puntos_2048, puntos_tetris, fecha)
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;

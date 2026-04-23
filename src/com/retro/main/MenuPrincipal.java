@@ -80,8 +80,8 @@ public class MenuPrincipal extends JFrame {
         panelFondo.add(titulo);
         panelFondo.add(Box.createRigidArea(new Dimension(0, 25)));
 
-        // Botón de registro con la nueva lógica
-        panelFondo.add(crearBotonPro("NUEVO JUGADOR / SESIÓN", null, e -> mostrarRegistro()));
+        // Botón de registro
+        panelFondo.add(crearBotonPro("NUEVO JUGADOR / SESIÓN", null, e -> mostrarAutenticacion()));
         panelFondo.add(Box.createRigidArea(new Dimension(0, 12)));
         
         panelFondo.add(crearBotonPro("SNAKE ARCADE", "res/snake_icon.png", e -> {
@@ -137,55 +137,194 @@ public class MenuPrincipal extends JFrame {
         add(panelFondo);
     }
 
-    private void mostrarRegistro() {
-        // --- NUEVA VALIDACIÓN ---
+    private void mostrarAutenticacion() {
         if (usuarioSesion != null) {
-            JOptionPane.showMessageDialog(this, 
-                "Ya tienes una sesión iniciada como: " + usuarioSesion.getUsername(), 
-                "Sesión Activa", 
-                JOptionPane.INFORMATION_MESSAGE);
-            return; // Salimos del método para que no pida nombre otra vez
+            JOptionPane.showMessageDialog(this, "Ya tienes una sesión iniciada: " + usuarioSesion.getUsername());
+            return;
         }
 
-        while (true) {
-            String nombre = JOptionPane.showInputDialog(this, "Nombre del nuevo jugador:");
-            if (nombre == null) break;
-            if (nombre.trim().isEmpty()) continue;
-            boolean existe = usuarioRepo.findAll().stream()
-                             .anyMatch(u -> u.getUsername().equalsIgnoreCase(nombre.trim()));
-            if (existe) {
-                JOptionPane.showMessageDialog(this, "Ese nombre ya existe.", "Error", JOptionPane.WARNING_MESSAGE);
-            } else {
-                Usuario user = new Usuario();
-                user.setUsername(nombre.trim());
-                usuarioSesion = usuarioRepo.save(user);
-                JOptionPane.showMessageDialog(this, "¡Bienvenido " + nombre + "!");
-                break;
+        JDialog dialog = new JDialog(this, "Autenticación de Usuario", true);
+        dialog.setSize(400, 250);
+        dialog.setLocationRelativeTo(this);
+        JTabbedPane tabbedPane = new JTabbedPane();
+
+        JPanel panelLogin = new JPanel(new GridBagLayout());
+        JPanel panelRegistro = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // --- PESTAÑA: INICIAR SESIÓN ---
+        JTextField userLogin = new JTextField(); userLogin.setPreferredSize(new Dimension(180, 25));
+        JPasswordField passLogin = new JPasswordField(); passLogin.setPreferredSize(new Dimension(180, 25));
+        JButton btnLogin = new JButton("Entrar");
+
+        gbc.gridx = 0; gbc.gridy = 0; panelLogin.add(new JLabel("Usuario:"), gbc);
+        gbc.gridx = 1; panelLogin.add(userLogin, gbc);
+        gbc.gridx = 0; gbc.gridy = 1; panelLogin.add(new JLabel("Contraseña:"), gbc);
+        gbc.gridx = 1; panelLogin.add(passLogin, gbc);
+        gbc.gridx = 1; gbc.gridy = 2; panelLogin.add(btnLogin, gbc);
+
+        btnLogin.addActionListener(e -> {
+            String username = userLogin.getText().trim();
+            String password = new String(passLogin.getPassword());
+
+            Usuario u = usuarioRepo.findAll().stream()
+                    .filter(user -> user.getUsername().equalsIgnoreCase(username))
+                    .findFirst().orElse(null);
+
+            if (username.equalsIgnoreCase("admin") && password.equals("admin1234")) {
+                usuarioSesion = (u != null) ? u : new Usuario(); 
+                if(u == null) { usuarioSesion.setUsername("admin"); usuarioRepo.save(usuarioSesion); }
+                JOptionPane.showMessageDialog(dialog, "Acceso Administrador concedido.");
+                dialog.dispose();
+                return;
             }
-        }
+
+            if (u != null && u.getPassword().equals(password)) {
+                usuarioSesion = u;
+                JOptionPane.showMessageDialog(dialog, "¡Bienvenido, " + username + "!");
+                dialog.dispose();
+            } else {
+                JOptionPane.showMessageDialog(dialog, "Usuario o contraseña incorrectos.");
+            }
+        });
+
+        // --- PESTAÑA: CREAR JUGADOR ---
+        JTextField userReg = new JTextField(); userReg.setPreferredSize(new Dimension(180, 25));
+        JPasswordField passReg = new JPasswordField(); passReg.setPreferredSize(new Dimension(180, 25));
+        JPasswordField passRegConfirm = new JPasswordField(); passRegConfirm.setPreferredSize(new Dimension(180, 25));
+        JButton btnReg = new JButton("Registrarse");
+
+        gbc.gridx = 0; gbc.gridy = 0; panelRegistro.add(new JLabel("Usuario:"), gbc);
+        gbc.gridx = 1; panelRegistro.add(userReg, gbc);
+        gbc.gridx = 0; gbc.gridy = 1; panelRegistro.add(new JLabel("Contraseña:"), gbc);
+        gbc.gridx = 1; panelRegistro.add(passReg, gbc);
+        gbc.gridx = 0; gbc.gridy = 2; panelRegistro.add(new JLabel("Confirmar:"), gbc);
+        gbc.gridx = 1; panelRegistro.add(passRegConfirm, gbc);
+        gbc.gridx = 1; gbc.gridy = 3; panelRegistro.add(btnReg, gbc);
+
+        btnReg.addActionListener(e -> {
+            String username = userReg.getText().trim();
+            String password = new String(passReg.getPassword());
+            String confirm = new String(passRegConfirm.getPassword());
+
+            if (username.isEmpty() || password.isEmpty()) return;
+            if (!password.equals(confirm)) {
+                JOptionPane.showMessageDialog(dialog, "Las contraseñas no coinciden.");
+                return;
+            }
+
+            boolean existe = usuarioRepo.findAll().stream()
+                    .anyMatch(u -> u.getUsername().equalsIgnoreCase(username));
+
+            if (existe) {
+                JOptionPane.showMessageDialog(dialog, "Ese nombre ya existe.");
+            } else {
+                Usuario nuevo = new Usuario();
+                nuevo.setUsername(username);
+                nuevo.setPassword(password);
+                usuarioSesion = usuarioRepo.save(nuevo);
+                JOptionPane.showMessageDialog(dialog, "Usuario creado exitosamente.");
+                dialog.dispose();
+            }
+        });
+
+        tabbedPane.addTab("Iniciar Sesión", panelLogin);
+        tabbedPane.addTab("Crear Jugador", panelRegistro);
+        dialog.add(tabbedPane);
+        dialog.setVisible(true);
+    }
+    
+    private int calcularTotal(Usuario u) {
+        int ptsSnake = (u.getPuntos_snake() > 0) ? (5000 - u.getPuntos_snake()) : 0;
+        return ptsSnake + u.getPuntos_2048() + u.getPuntos_tetris();
     }
 
     private void mostrarRanking() {
         JDialog ventanaRanking = new JDialog(this, "RANKING GLOBAL", true);
-        ventanaRanking.setSize(600, 500);
+        ventanaRanking.setSize(650, 550);
         ventanaRanking.setLocationRelativeTo(this);
-        ventanaRanking.getContentPane().setBackground(new Color(15, 15, 25));
-        List<Usuario> usuarios = usuarioRepo.findRankingGlobal();
-        String[] columnas = {"JUGADOR", "TIME SNAKE", "MAX 2048", "PUNTOS TETRIS", "TOTAL"};
+        ventanaRanking.setLayout(new BorderLayout());
+
+        List<Usuario> usuarios = usuarioRepo.findAll();
+        usuarios.sort((u1, u2) -> Integer.compare(calcularTotal(u2), calcularTotal(u1)));
+
+        String[] columnas = {"POS", "JUGADOR", "TIME SNAKE", "MAX 2048", "PUNTOS TETRIS", "TOTAL"};
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
+        
+        int pos = 1;
         for (Usuario u : usuarios) {
-            int ptsSnake = (u.getPuntos_snake() > 0) ? (5000 - u.getPuntos_snake()) : 0;
-            int total = ptsSnake + u.getPuntos_2048() + u.getPuntos_tetris();
-            String tiempoStr = (u.getPuntos_snake() > 0) ? u.getPuntos_snake() + "s" : "---";
-            modelo.addRow(new Object[]{ u.getUsername(), tiempoStr, u.getPuntos_2048(), u.getPuntos_tetris(), total });
+            String labelPos;
+            if (pos == 1) labelPos = "🏆 1º LUGAR";
+            else if (pos == 2) labelPos = "🥈 2º LUGAR";
+            else if (pos == 3) labelPos = "🥉 3º LUGAR";
+            else labelPos = String.valueOf(pos);
+
+            modelo.addRow(new Object[]{ labelPos, u.getUsername(), u.getPuntos_snake() + "s", u.getPuntos_2048(), u.getPuntos_tetris(), calcularTotal(u) });
+            pos++;
         }
+
         JTable tabla = new JTable(modelo);
-        tabla.setBackground(new Color(30, 30, 40));
-        tabla.setForeground(Color.CYAN);
-        tabla.setRowHeight(35);
+        tabla.getColumnModel().getColumn(0).setPreferredWidth(80); // Un poco más de espacio para la medalla
         ventanaRanking.add(new JScrollPane(tabla), BorderLayout.CENTER);
+
+        boolean esAdmin = usuarioSesion != null && "admin".equalsIgnoreCase(usuarioSesion.getUsername());
+
+        if (esAdmin) {
+            JPanel panelAdmin = new JPanel();
+            JButton btnBorrar = new JButton("Borrar Jugador");
+            JButton btnEditar = new JButton("Editar Puntos");
+
+            btnBorrar.addActionListener(e -> {
+                int fila = tabla.getSelectedRow();
+                if (fila != -1) {
+                    Usuario u = usuarios.get(fila);
+                    if (JOptionPane.showConfirmDialog(ventanaRanking, "¿Borrar a " + u.getUsername() + "?", "Confirmar", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                        usuarioRepo.delete(u);
+                        ventanaRanking.dispose();
+                        mostrarRanking();
+                    }
+                }
+            });
+
+            btnEditar.addActionListener(e -> {
+                int fila = tabla.getSelectedRow();
+                if (fila != -1) {
+                    Usuario u = usuarios.get(fila);
+                    JTextField txtTetris = new JTextField(String.valueOf(u.getPuntos_tetris()));
+                    JTextField txt2048 = new JTextField(String.valueOf(u.getPuntos_2048()));
+                    JTextField txtSnake = new JTextField(String.valueOf(u.getPuntos_snake()));
+                    JPanel panelFormulario = new JPanel(new GridLayout(3, 2, 5, 5));
+                    panelFormulario.add(new JLabel("Puntos Tetris:")); panelFormulario.add(txtTetris);
+                    panelFormulario.add(new JLabel("Puntos 2048:")); panelFormulario.add(txt2048);
+                    panelFormulario.add(new JLabel("Puntos Snake:")); panelFormulario.add(txtSnake);
+
+                    int result = JOptionPane.showConfirmDialog(ventanaRanking, panelFormulario, 
+                               "Editar Estadísticas de " + u.getUsername(), JOptionPane.OK_CANCEL_OPTION);
+
+                    if (result == JOptionPane.OK_OPTION) {
+                        try {
+                            u.setPuntos_tetris(Integer.parseInt(txtTetris.getText()));
+                            u.setPuntos_2048(Integer.parseInt(txt2048.getText()));
+                            u.setPuntos_snake(Integer.parseInt(txtSnake.getText()));
+                            usuarioRepo.save(u);
+                            ventanaRanking.dispose();
+                            mostrarRanking();
+                        } catch (NumberFormatException ex) {
+                            JOptionPane.showMessageDialog(ventanaRanking, "Error: Introduce solo números.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                }
+            });
+
+            panelAdmin.add(btnEditar);
+            panelAdmin.add(btnBorrar);
+            ventanaRanking.add(panelAdmin, BorderLayout.SOUTH);
+        }
+
         ventanaRanking.setVisible(true);
     }
 

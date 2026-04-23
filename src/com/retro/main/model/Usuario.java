@@ -12,6 +12,9 @@ public class Usuario {
     @Column(unique = true, nullable = false)
     private String username;
 
+    @Column(nullable = false)
+    private String password;
+
     private int puntos_snake = 0;
     private int puntos_2048 = 0;
     private int puntos_tetris = 0;
@@ -21,6 +24,9 @@ public class Usuario {
     
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+    
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
     
     public int getPuntos_snake() { return puntos_snake; }
     public void setPuntos_snake(int puntos_snake) { this.puntos_snake = puntos_snake; }
