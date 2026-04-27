@@ -26,27 +26,24 @@ DROP TABLE IF EXISTS `usuarios`;
 CREATE TABLE `usuarios` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,
-  `password` varchar(255) NOT NULL, -- Columna añadida para el modo admin/login
+  `password` varchar(255) NOT NULL, 
   `puntos_snake` int(11) DEFAULT 0,
   `puntos_2048` int(11) DEFAULT 0,
   `puntos_tetris` int(11) DEFAULT 0,
   `fecha_registro` timestamp NOT NULL DEFAULT current_timestamp(),
+  `dark_mode` tinyint(1) DEFAULT 0, -- Columna para preferencias de usuario
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `usuarios`
 --
--- NOTA: Tus datos antiguos deben actualizarse añadiendo el campo password.
--- Ejemplo de inserción manual:
--- INSERT INTO `usuarios` (username, password, puntos_snake, puntos_2048, puntos_tetris) VALUES ('admin', 'admin1234', 0, 0, 0);
 
 LOCK TABLES `usuarios` WRITE;
 /*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
--- Aquí irían tus nuevos inserts con el formato correcto: (id, username, password, puntos_snake, puntos_2048, puntos_tetris, fecha)
 /*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -59,4 +56,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-04-13 13:39:34
+-- Dump completed on 2026-04-24 11:35:00

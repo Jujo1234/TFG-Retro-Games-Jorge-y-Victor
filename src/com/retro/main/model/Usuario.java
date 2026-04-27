@@ -18,6 +18,9 @@ public class Usuario {
     private int puntos_snake = 0;
     private int puntos_2048 = 0;
     private int puntos_tetris = 0;
+    
+    @Column(name = "dark_mode")
+    private boolean darkMode = false;
 
     // Getters y Setters
     public Long getId() { return id; }
@@ -36,4 +39,7 @@ public class Usuario {
     
     public int getPuntos_tetris() { return puntos_tetris; }
     public void setPuntos_tetris(int puntos_tetris) { this.puntos_tetris = puntos_tetris; }
+
+    public boolean isDarkMode() { return darkMode; }
+    public void setDarkMode(boolean darkMode) { this.darkMode = darkMode; }
 }
