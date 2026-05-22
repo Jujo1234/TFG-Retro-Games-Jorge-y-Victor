@@ -1,6 +1,7 @@
 package com.retro.games.puzzle2048;
 
 import javax.swing.*;
+import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -25,12 +26,19 @@ public class Game2048 extends JPanel {
     private Usuario jugadorActual;
     private UsuarioRepository repo;
 
+    // Componentes interactivos para el menú de fin de partida profesional
+    private JPanel panelBotonesFinal;
+    private JButton btnReiniciar;
+    private JButton btnSalir;
+
     public Game2048(Usuario jugador, UsuarioRepository repo) {
         this.jugadorActual = jugador;
         this.repo = repo;
         setPreferredSize(new Dimension(400, 500));
         setBackground(new Color(187, 173, 160));
         setFocusable(true);
+        // Usamos Layout nulo para posicionar milimétricamente la botonera sobre el fondo pintado
+        this.setLayout(null);
         
         addKeyListener(new KeyAdapter() {
             @Override
@@ -53,7 +61,63 @@ public class Game2048 extends JPanel {
             }
         });
         
+        // Inicializamos los botones ocultos del menú final
+        inicializarBotoneraFinal();
+        
         reiniciarJuego();
+    }
+
+    private void inicializarBotoneraFinal() {
+        panelBotonesFinal = new JPanel(new GridLayout(1, 2, 15, 0));
+        panelBotonesFinal.setOpaque(false);
+        
+        // CORRECCIÓN MATEMÁTICA DE POSICIÓN:
+        // Bajamos el panel a la coordenada Y = 295 para que deje espacio libre a los puntos e identificación de usuario.
+        int panelW = 300;
+        int panelH = 38;
+        int panelX = (400 - panelW) / 2;
+        int panelY = 295; 
+        panelBotonesFinal.setBounds(panelX, panelY, panelW, panelH);
+
+        btnReiniciar = new JButton("REINTENTAR");
+        estilizarBotonInterface(btnReiniciar, Color.GREEN);
+        btnReiniciar.addActionListener(e -> {
+            panelBotonesFinal.setVisible(false);
+            reiniciarJuego();
+            this.requestFocusInWindow();
+        });
+
+        btnSalir = new JButton("VOLVER AL MENÚ");
+        estilizarBotonInterface(btnSalir, new Color(255, 80, 80));
+        btnSalir.addActionListener(e -> {
+            Window w = SwingUtilities.getWindowAncestor(this);
+            if (w != null) w.dispose();
+        });
+
+        panelBotonesFinal.add(btnReiniciar);
+        panelBotonesFinal.add(btnSalir);
+        panelBotonesFinal.setVisible(false);
+        this.add(panelBotonesFinal);
+    }
+
+    private void estilizarBotonInterface(JButton b, Color accentColor) {
+        b.setBackground(new Color(45, 40, 40));
+        b.setForeground(Color.WHITE);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        b.setFocusPainted(false);
+        b.setBorder(new LineBorder(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 100), 1));
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        b.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { 
+                b.setBackground(new Color(60, 55, 55)); 
+                b.setBorder(new LineBorder(accentColor, 1));
+            }
+            public void mouseExited(MouseEvent e) { 
+                b.setBackground(new Color(45, 40, 40)); 
+                b.setBorder(new LineBorder(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 100), 1));
+            }
+        });
     }
 
     // --- SISTEMA DE AUDIO PARA EFECTOS ---
@@ -116,6 +180,7 @@ public class Game2048 extends JPanel {
                 if (newRow[c] != 0) finalRow[pos++] = newRow[c];
             }
             if (!java.util.Arrays.equals(board[r], finalRow)) moved = true;
+            finalRow = finalRow.clone();
             board[r] = finalRow;
         }
         return moved;
@@ -153,8 +218,7 @@ public class Game2048 extends JPanel {
                     win = true;
                     guardarPuntosBaseDatos();
                     playEfecto("victoria.wav"); 
-                    // MODIFICACIÓN AQUÍ: Añadimos los puntos al mensaje
-                    mostrarMenuFin("¡BRUTAL! Has llegado al 2048.\nPuntos finales: " + score);
+                    panelBotonesFinal.setVisible(true);
                     return;
                 }
             }
@@ -173,8 +237,7 @@ public class Game2048 extends JPanel {
         gameOver = true;
         guardarPuntosBaseDatos();
         playEfecto("derrota.wav"); 
-        // MODIFICACIÓN AQUÍ: Añadimos los puntos al mensaje
-        mostrarMenuFin("Game Over. No hay más movimientos.\nPuntos finales: " + score);
+        panelBotonesFinal.setVisible(true);
     }
 
     private void guardarPuntosBaseDatos() {
@@ -182,32 +245,6 @@ public class Game2048 extends JPanel {
             jugadorActual.setPuntos_2048(score);
             repo.save(jugadorActual);
         }
-    }
-
-    private void mostrarMenuFin(String mensaje) {
-        Object[] opciones = {"Jugar otra vez", "Volver al Menú"};
-        
-        Timer timerMenu = new Timer(800, e -> {
-            int seleccion = JOptionPane.showOptionDialog(
-                this,
-                mensaje + "\n¿Qué quieres hacer?",
-                "Fin de la partida",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.INFORMATION_MESSAGE,
-                null, 
-                opciones, 
-                opciones[0]
-            );
-
-            if (seleccion == JOptionPane.YES_OPTION) {
-                reiniciarJuego();
-            } else {
-                Window win = SwingUtilities.getWindowAncestor(this);
-                if (win != null) win.dispose();
-            }
-        });
-        timerMenu.setRepeats(false);
-        timerMenu.start();
     }
 
     @Override
@@ -224,6 +261,81 @@ public class Game2048 extends JPanel {
             for (int c = 0; c < 4; c++) {
                 drawTile(g2, board[r][c], 20 + c * 90, 70 + r * 90);
             }
+        }
+
+        // COMPONENTE DE RENDERIZADO DEL MENÚ DE FIN DE PARTIDA INTEGRADO
+        if (gameOver || win) {
+            // Fondo de contraste oscuro unificado
+            g2.setColor(new Color(15, 15, 20, 220));
+            g2.fillRect(0, 0, getWidth(), getHeight());
+
+            // CORRECCIÓN DE CAJA: Aumentamos la altura de la tarjeta a 310 para albergar holgadamente todas las filas
+            int cardW = 340;
+            int cardH = 310;
+            int cardX = (getWidth() - cardW) / 2;
+            int cardY = (getHeight() - cardH) / 2;
+
+            // Sombra paralela suave
+            g2.setColor(new Color(0, 0, 0, 120));
+            g2.fillRoundRect(cardX + 5, cardY + 5, cardW, cardH, 15, 15);
+
+            // Contenedor principal degradado
+            GradientPaint cardGrad = new GradientPaint(cardX, cardY, new Color(35, 30, 30), cardX, cardY + cardH, new Color(20, 18, 18));
+            g2.setPaint(cardGrad);
+            g2.fillRoundRect(cardX, cardY, cardW, cardH, 15, 15);
+
+            // Textos y acentuaciones de color según el estado lógico del juego
+            String headerText;
+            Color accentColor;
+            if (win) {
+                headerText = "¡OBJETIVO ALCANZADO!";
+                accentColor = Color.GREEN;
+            } else {
+                headerText = "FIN DE LA PARTIDA";
+                accentColor = new Color(255, 75, 75);
+            }
+
+            // Borde exterior reactivo de estilo neón
+            g2.setColor(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 160));
+            g2.setStroke(new BasicStroke(2f));
+            g2.drawRoundRect(cardX, cardY, cardW, cardH, 15, 15);
+            g2.setStroke(new BasicStroke(1f)); // Restaurar pincel base
+
+            FontMetrics fm;
+
+            // TÍTULO CENTRAL: Efecto luminoso superpuesto (Glow)
+            g2.setFont(new Font("Segoe UI", Font.BOLD, 26));
+            fm = g2.getFontMetrics();
+            int titleX = cardX + (cardW - fm.stringWidth(headerText)) / 2;
+            
+            g2.setColor(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 40));
+            g2.drawString(headerText, titleX - 1, cardY + 51);
+            g2.drawString(headerText, titleX + 1, cardY + 51);
+            
+            g2.setColor(accentColor);
+            g2.drawString(headerText, titleX, cardY + 50);
+
+            // Divisor geométrico
+            g2.setColor(new Color(0, 255, 255, 60));
+            g2.drawLine(cardX + 30, cardY + 80, cardX + cardW - 30, cardY + 80);
+
+            // SUBPANEL DE RENDIMIENTO AJUSTADO AL PÍXEL
+            g2.setFont(new Font("Monospaced", Font.BOLD, 15));
+            fm = g2.getFontMetrics();
+
+            // Línea 1: Puntos obtenidos colocados en la parte alta (Y = 125) para que no choquen con los botones
+            g2.setColor(Color.CYAN);
+            g2.drawString("PUNTOS:", cardX + 40, cardY + 125);
+            g2.setColor(Color.WHITE);
+            String scoreStr = score + " PTS";
+            g2.drawString(scoreStr, cardX + cardW - 40 - fm.stringWidth(scoreStr), cardY + 125);
+
+            // Línea 2: Identificación del Jugador colocada justo en la parte baja de los botones (Y = 260)
+            g2.setColor(Color.CYAN);
+            g2.drawString("USUARIO:", cardX + 40, cardY + 260);
+            g2.setColor(Color.WHITE);
+            String opName = (jugadorActual != null) ? jugadorActual.getUsername().toUpperCase() : "INVITADO";
+            g2.drawString(opName, cardX + cardW - 40 - fm.stringWidth(opName), cardY + 260);
         }
     }
 

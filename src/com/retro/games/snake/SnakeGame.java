@@ -14,42 +14,88 @@ import java.io.File;
 import com.retro.main.model.Usuario;
 import com.retro.main.repository.UsuarioRepository;
 
+/*
+ Declaras la clase SnakeGame. Al usar extends JPanel, 
+ significa que esta clase es un panel de dibujo. No es una ventana entera, 
+ sino el lienzo que se incrusta dentro del JFrame que lanza el menú principal.
+ */
 public class SnakeGame extends JPanel {
+	// El identificador único de versión para la serialización de la clase, requerido por Java al heredar de un componente visual.
     private static final long serialVersionUID = 1L;
 
+    // Define el tamaño en píxeles de cada "casilla" o cuadrado del juego (la cabeza, el cuerpo, las manzanas y las paredes miden $25 \times 25$ píxeles).
     private final int TILE_SIZE = 25;
+    // El ancho total de la pantalla del juego en píxeles ($32 \text{ casillas} \times 25 \text{ píxeles} = 800$).
     private final int WIDTH = 800; 
+    // El alto total de la pantalla en píxeles ($25 \text{ casillas} \times 25 \text{ píxeles} = 625$, aunque jugables son 23 filas).
     private final int HEIGHT = 625; 
+    // El número de casillas horizontales que componen la rejilla del juego.
     private final int GRID_WIDTH = 32;
+    // El número de casillas verticales que componen la rejilla del juego.
     private final int GRID_HEIGHT = 23;
 
+    // Un ArrayList que almacena objetos Point (coordenadas $X, Y$). 
+    // Cada punto es una parte del cuerpo de la serpiente. 
+    // La posición 0 es la cabeza y las siguientes son la cola.
     private final ArrayList<Point> snake = new ArrayList<>();
+    // Lista de coordenadas donde están las manzanas que la serpiente debe comer en el nivel actual.
     private final ArrayList<Point> applesInLevel = new ArrayList<>();
+    // Lista de coordenadas de los enemigos o fantasmas que se mueven por el mapa para intentar matarte.
     private final ArrayList<Point> enemies = new ArrayList<>();
+    // Línea clave (Matriz bidimensional). Es el mapa o laberinto del juego. Si maze[y][x] vale 1, 
+    // significa que en esa casilla hay una pared indestructible; si vale 0, está vacía.
     private int[][] maze = new int[GRID_HEIGHT][GRID_WIDTH];
     
+    // Variable entera que almacena el nivel actual en el que se encuentra el jugador.
     private int currentLevel = 1;
+    // Bandera que indica si el bucle del juego está activo (movimiento de la serpiente, físicas). Si es false, el juego está en pausa o has muerto.
     private boolean running = false;
+    // Se vuelve true cuando te comes todas las manzanas de la pantalla, indicando que has superado el nivel actual.
     private boolean levelCleared = false;
+    // Se vuelve true cuando superas el último nivel del juego, activando la pantalla de victoria final.
     private boolean gameFinished = false;
 
+    // Guarda el milisegundo exacto en el que el jugador realiza el primer movimiento de la partida.
     private long startTime;
+    // Controla si el cronómetro ya está en marcha para evitar reiniciarlo cada vez que pulsas una tecla de dirección.
     private boolean timerStarted = false;
+    // Almacena el tiempo total que ha tardado el jugador en pasarse el juego. Este valor es el que luego lee el menú principal para transformarlo en puntuación.
     private int tiempoFinalSegundos = 0;
 
+    // El objeto que contiene la información del usuario de la sesión actual (se le pasa desde el menú principal).
     private Usuario jugadorActual;
+    // El repositorio inyectado de Spring. Permite que el juego guarde datos en las tablas SQL directamente si fuera necesario.
     private UsuarioRepository repo;
 
+    // Objeto de la librería de audio de Java (javax.sound.sampled). Almacena y reproduce el archivo de sonido de la música retro en bucle mientras juegas.
     private Clip musicaFondo;
 
+    // Usuario jugador: Recibe como parámetro el objeto con los datos del jugador actual que tiene la sesión iniciada en el menú.
+   // Recibe la referencia del repositorio de Spring Boot para poder interactuar con la base de datos SQL.
     public SnakeGame(Usuario jugador, UsuarioRepository repo) {
+    	// Guarda el objeto del jugador recibido en la variable global jugadorActual de esta clase. De este modo, 
+    	// el juego sabe en todo momento quién está jugando (para mirar si tiene el modo oscuro, su nombre, etc.).
         this.jugadorActual = jugador;
+        // Almacena la referencia del repositorio de la base de datos en la variable local repo para poder usar las funciones de guardado más adelante.
         this.repo = repo;
+        // Establece el tamaño preferido del panel de juego utilizando las constantes que vimos en la cabecera ($800 \times 625$ píxeles).
+        // Cuando en el menú principal ejecutas la instrucción v.pack(), 
+        // la ventana se encoge o estira hasta clavarse exactamente en estas dimensiones.
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        // Aplica un color de fondo al lienzo del juego. Es un tono azul/gris espacial muy oscuro (casi negro)
         this.setBackground(new Color(15, 15, 20)); 
+        // Activa la capacidad de que este panel reciba el "foco". En Java, si un panel no es focusable, 
+        // ignorará por completo todo lo que teclees, 
+        // haciendo imposible controlar a la serpiente.
         this.setFocusable(true);
+        // Enlaza el panel con un "escuchador" de teclado personalizado (MyKeyAdapter).
+        // A partir de esta línea, cada vez que el usuario pulse una flecha de dirección o las teclas WASD, 
+        // el juego capturará el evento para desviar la trayectoria de la serpiente.
         this.addKeyListener(new MyKeyAdapter());
         
+        // Invoca al método interno encargado de construir el escenario del Nivel 1.
+        // Esta función se ocupa de limpiar la pantalla, drawing las paredes del primer laberinto, 
+        // posicionar a la serpiente en su casilla de salida y esparcir las manzanas correspondientes.
         loadLevel(1);
     }
 
@@ -227,45 +273,162 @@ public class SnakeGame extends JPanel {
         
         g2d.setColor(Color.WHITE);
         g2d.setFont(new Font("Consolas", Font.BOLD, 18));
-        g2d.drawString("LEVEL: " + currentLevel, 30, 608);
-        g2d.drawString("LEFT: " + applesInLevel.size(), 180, 608);
+        g2d.drawString("NIVEL: " + currentLevel, 30, 608);
+        g2d.drawString("RESTAN: " + applesInLevel.size(), 180, 608);
 
         if (gameFinished) drawFinalOverlay(g2d);
-        else if (levelCleared) drawOverlay(g2d, "LEVEL " + currentLevel + " CLEARED!", "Press 'N' for next level", Color.GREEN);
-        else if (!running) drawOverlay(g2d, "GAME OVER", "Press 'R' to try again", Color.RED);
+        else if (levelCleared) drawOverlay(g2d, "¡NIVEL " + currentLevel + " COMPLETADO!", "Presiona 'N' para el siguiente nivel", Color.GREEN);
+        else if (!running) drawOverlay(g2d, "FIN DEL JUEGO", "Presiona 'R' para reintentar", Color.RED);
     }
 
-    private void drawOverlay(Graphics2D g2d, String t1, String t2, Color c) {
-        g2d.setColor(new Color(0, 0, 0, 180));
+    private void drawOverlay(Graphics2D g2d, String title, String subtitle, Color mainColor) {
+        // Fondo oscurecido total de ambiente
+        g2d.setColor(new Color(10, 10, 15, 230));
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
-        g2d.setColor(c);
-        g2d.setFont(new Font("Consolas", Font.BOLD, 50));
-        FontMetrics fm = g2d.getFontMetrics();
-        g2d.drawString(t1, (WIDTH - fm.stringWidth(t1)) / 2, HEIGHT / 2);
+
+        // Caja de interfaz central estilizada
+        int panelW = 560;
+        int panelH = 260;
+        int panelX = (WIDTH - panelW) / 2;
+        int panelY = (HEIGHT - panelH) / 2 - 20;
+
+        // Sombra de la caja central
+        g2d.setColor(new Color(0, 0, 0, 150));
+        g2d.fillRoundRect(panelX + 8, panelY + 8, panelW, panelH, 20, 20);
+
+        // Fondo degradado del panel
+        GradientPaint panelGrad = new GradientPaint(panelX, panelY, new Color(25, 25, 35), panelX, panelY + panelH, new Color(15, 15, 20));
+        g2d.setPaint(panelGrad);
+        g2d.fillRoundRect(panelX, panelY, panelW, panelH, 20, 20);
+
+        // Marco exterior brillante de estilo neón del color principal
+        g2d.setColor(new Color(mainColor.getRed(), mainColor.getGreen(), mainColor.getBlue(), 180));
+        g2d.setStroke(new BasicStroke(2f));
+        g2d.drawRoundRect(panelX, panelY, panelW, panelH, 20, 20);
+        g2d.setStroke(new BasicStroke(1f)); // Restaurar grosor de línea base
+
+        FontMetrics fm;
+
+        // TEXTO PRINCIPAL: EFECTO GLOW (Brillo Retro)
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 38));
+        fm = g2d.getFontMetrics();
+        int titleX = panelX + (panelW - fm.stringWidth(title)) / 2;
+        
+        // Dibujo de brillo difuminado detrás del texto
+        g2d.setColor(new Color(mainColor.getRed(), mainColor.getGreen(), mainColor.getBlue(), 60));
+        g2d.drawString(title, titleX - 2, panelY + 92);
+        g2d.drawString(title, titleX + 2, panelY + 92);
+        g2d.drawString(title, titleX, panelY + 90 - 2);
+        g2d.drawString(title, titleX, panelY + 90 + 2);
+        // Texto frontal definitivo
+        g2d.setColor(mainColor);
+        g2d.drawString(title, titleX, panelY + 90);
+
+        // Separador horizontal neón sutil
+        g2d.setColor(new Color(mainColor.getRed(), mainColor.getGreen(), mainColor.getBlue(), 100));
+        g2d.drawLine(panelX + 40, panelY + 130, panelX + panelW - 40, panelY + 130);
+
+        // Subtítulo centrado
         g2d.setColor(Color.WHITE);
         g2d.setFont(new Font("Consolas", Font.PLAIN, 20));
         fm = g2d.getFontMetrics();
-        g2d.drawString(t2, (WIDTH - fm.stringWidth(t2)) / 2, HEIGHT / 2 + 60);
+        g2d.drawString(subtitle, panelX + (panelW - fm.stringWidth(subtitle)) / 2, panelY + 180);
     }
 
     private void drawFinalOverlay(Graphics2D g2d) {
-        g2d.setColor(new Color(0, 0, 0, 210));
+        // Fondo oscurecido total de ambiente
+        g2d.setColor(new Color(10, 10, 15, 230));
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
-        g2d.setColor(Color.YELLOW);
-        g2d.setFont(new Font("Consolas", Font.BOLD, 50));
-        String text = "MISSION ACCOMPLISHED!";
-        FontMetrics fm = g2d.getFontMetrics();
-        g2d.drawString(text, (WIDTH - fm.stringWidth(text)) / 2, HEIGHT / 2 - 40);
-        
-        g2d.setColor(Color.CYAN);
-        g2d.setFont(new Font("Consolas", Font.BOLD, 25));
-        String timeText = "TOTAL TIME: " + tiempoFinalSegundos + " SECONDS";
-        fm = g2d.getFontMetrics();
-        g2d.drawString(timeText, (WIDTH - fm.stringWidth(timeText)) / 2, HEIGHT / 2 + 20);
 
+        // Caja de interfaz central estilizada (Dashboard de Victoria)
+        int panelW = 560;
+        int panelH = 360;
+        int panelX = (WIDTH - panelW) / 2;
+        int panelY = (HEIGHT - panelH) / 2 - 20;
+
+        // Sombra de la caja central
+        g2d.setColor(new Color(0, 0, 0, 150));
+        g2d.fillRoundRect(panelX + 8, panelY + 8, panelW, panelH, 20, 20);
+
+        // Fondo degradado del panel de estadísticas
+        GradientPaint panelGrad = new GradientPaint(panelX, panelY, new Color(25, 25, 35), panelX, panelY + panelH, new Color(15, 15, 20));
+        g2d.setPaint(panelGrad);
+        g2d.fillRoundRect(panelX, panelY, panelW, panelH, 20, 20);
+
+        // Marco exterior brillante de estilo neón dorado
+        g2d.setColor(new Color(255, 215, 0, 180));
+        g2d.setStroke(new BasicStroke(2f));
+        g2d.drawRoundRect(panelX, panelY, panelW, panelH, 20, 20);
+        g2d.setStroke(new BasicStroke(1f)); // Restaurar grosor de línea base
+
+        FontMetrics fm;
+
+        // TEXTO PRINCIPAL: EFECTO GLOW (Brillo Retro)
+        String titleText = "MISIÓN CUMPLIDA";
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 38));
+        fm = g2d.getFontMetrics();
+        int titleX = panelX + (panelW - fm.stringWidth(titleText)) / 2;
+        
+        // Dibujo de brillo difuminado detrás del texto
+        g2d.setColor(new Color(255, 215, 0, 60));
+        g2d.drawString(titleText, titleX - 2, panelY + 62);
+        g2d.drawString(titleText, titleX + 2, panelY + 62);
+        g2d.drawString(titleText, titleX, panelY + 60 - 2);
+        g2d.drawString(titleText, titleX, panelY + 60 + 2);
+        // Texto frontal definitivo
+        g2d.setColor(new Color(255, 215, 0));
+        g2d.drawString(titleText, titleX, panelY + 60);
+
+        // Separador horizontal neón dorado sutil
+        g2d.setColor(new Color(255, 215, 0, 100));
+        g2d.drawLine(panelX + 40, panelY + 90, panelX + panelW - 40, panelY + 90);
+
+        // PANEL DE ESTADÍSTICAS DEL TFG
+        g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
+        fm = g2d.getFontMetrics();
+        
+        // Fila 1: Jugador
+        String userStr = jugadorActual != null ? jugadorActual.getUsername().toUpperCase() : "INVITADO";
+        g2d.setColor(Color.CYAN);
+        g2d.drawString("OPERADOR:", panelX + 60, panelY + 140);
         g2d.setColor(Color.WHITE);
-        g2d.setFont(new Font("Consolas", Font.PLAIN, 18));
-        g2d.drawString("M - Return to Menu | R - Restart | V - Level 1", WIDTH/2 - 200, HEIGHT/2 + 80);
+        g2d.drawString(userStr, panelX + panelW - 60 - fm.stringWidth(userStr), panelY + 140);
+
+        // Fila 2: Tiempo Record
+        String timeStr = tiempoFinalSegundos + " SEGUNDOS";
+        g2d.setColor(Color.CYAN);
+        g2d.drawString("TIEMPO RÉCORD:", panelX + 60, panelY + 180);
+        g2d.setColor(Color.WHITE);
+        g2d.drawString(timeStr, panelX + panelW - 60 - fm.stringWidth(timeStr), panelY + 180);
+
+        // Fila 3: Autores del Software
+        String authStr = "JORGE & VICTOR";
+        g2d.setColor(Color.CYAN);
+        g2d.drawString("DESARROLLADORES:", panelX + 60, panelY + 220);
+        g2d.setColor(new Color(150, 150, 150));
+        g2d.drawString(authStr, panelX + panelW - 60 - fm.stringWidth(authStr), panelY + 220);
+
+        // Separador horizontal inferior sutil
+        g2d.setColor(new Color(255, 215, 0, 40));
+        g2d.drawLine(panelX + 40, panelY + 250, panelX + panelW - 40, panelY + 250);
+
+        // BOTONES DE CONTROL DE INTERFAZ (Controles de consola)
+        g2d.setFont(new Font("Consolas", Font.BOLD, 14));
+        fm = g2d.getFontMetrics();
+        
+        String prompt1 = "[M] VOLVER AL MENÚ OS";
+        String prompt2 = "[R] REINICIAR JUEGO";
+        String prompt3 = "[V] REINICIAR A NIVEL 1";
+        
+        int spacing = panelW / 3;
+        g2d.setColor(new Color(255, 80, 80)); // Rojo retro para salir
+        g2d.drawString(prompt1, panelX + (spacing - fm.stringWidth(prompt1))/2 + 5, panelY + 295);
+        
+        g2d.setColor(Color.GREEN); // Verde para reintentar nivel
+        g2d.drawString(prompt2, panelX + spacing + (spacing - fm.stringWidth(prompt2))/2, panelY + 295);
+        
+        g2d.setColor(Color.YELLOW); // Dorado/Amarillo para empezar de cero
+        g2d.drawString(prompt3, panelX + spacing*2 + (spacing - fm.stringWidth(prompt3))/2 - 5, panelY + 295);
     }
 
     private void manualMove(int dx, int dy) {

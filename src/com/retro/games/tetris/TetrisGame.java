@@ -1,6 +1,7 @@
 package com.retro.games.tetris;
 
 import javax.swing.*;
+import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Random;
@@ -37,12 +38,20 @@ public class TetrisGame extends JPanel implements ActionListener {
     private Usuario jugadorActual;
     private UsuarioRepository repo;
 
+    // Componentes interactivos para el menú de fin de partida profesional
+    private JPanel panelBotonesFinal;
+    private JButton btnReiniciar;
+    private JButton btnSalir;
+    private boolean mostraMenuFinGrafico = false;
+
     public TetrisGame(Usuario jugador, UsuarioRepository repo) {
         this.jugadorActual = jugador;
         this.repo = repo;
         setPreferredSize(new Dimension(BOARD_WIDTH * TILE_SIZE, BOARD_HEIGHT * TILE_SIZE + 50));
         setBackground(new Color(20, 20, 20));
         setFocusable(true);
+        // Usamos Layout nulo para posicionar de forma milimétrica la botonera final sobre los gráficos
+        this.setLayout(null);
         
         board = new int[BOARD_HEIGHT][BOARD_WIDTH];
         curPiece = new Tetromino();
@@ -62,6 +71,9 @@ public class TetrisGame extends JPanel implements ActionListener {
             }
         });
 
+        // Inicializamos los botones ocultos del menú final integrado
+        inicializarBotoneraFinal();
+
         // Iniciamos música y juego con delay
         Timer initDelay = new Timer(200, e -> {
             playMusicaFondo();
@@ -69,6 +81,61 @@ public class TetrisGame extends JPanel implements ActionListener {
         });
         initDelay.setRepeats(false);
         initDelay.start();
+    }
+
+    private void inicializarBotoneraFinal() {
+        panelBotonesFinal = new JPanel(new GridLayout(1, 2, 12, 0));
+        panelBotonesFinal.setOpaque(false);
+        
+        // CORRECCIÓN DE COORDENADAS: 
+        // Bajamos la botonera a la coordenada Y = 400 para que no tape los textos informativos
+        int panelW = 240;
+        int panelH = 36;
+        int panelX = (300 - panelW) / 2;
+        int panelY = 400; 
+        panelBotonesFinal.setBounds(panelX, panelY, panelW, panelH);
+
+        btnReiniciar = new JButton("REINTENTAR");
+        estilizarBotonInterface(btnReiniciar, Color.GREEN);
+        btnReiniciar.addActionListener(e -> {
+            panelBotonesFinal.setVisible(false);
+            mostraMenuFinGrafico = false;
+            playMusicaFondo();
+            start();
+            this.requestFocusInWindow();
+        });
+
+        btnSalir = new JButton("VOLVER AL MENÚ");
+        estilizarBotonInterface(btnSalir, new Color(255, 80, 80));
+        btnSalir.addActionListener(e -> {
+            JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            if (topFrame != null) topFrame.dispose();
+        });
+
+        panelBotonesFinal.add(btnReiniciar);
+        panelBotonesFinal.add(btnSalir);
+        panelBotonesFinal.setVisible(false);
+        this.add(panelBotonesFinal);
+    }
+
+    private void estilizarBotonInterface(JButton b, Color accentColor) {
+        b.setBackground(new Color(40, 40, 45));
+        b.setForeground(Color.WHITE);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        b.setFocusPainted(false);
+        b.setBorder(new LineBorder(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 100), 1));
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        b.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { 
+                b.setBackground(new Color(55, 55, 60)); 
+                b.setBorder(new LineBorder(accentColor, 1));
+            }
+            public void mouseExited(MouseEvent e) { 
+                b.setBackground(new Color(40, 40, 45)); 
+                b.setBorder(new LineBorder(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 100), 1));
+            }
+        });
     }
 
     // --- LÓGICA DE AUDIO ---
@@ -117,6 +184,7 @@ public class TetrisGame extends JPanel implements ActionListener {
         clearBoard();
         score = 0;
         isStarted = true;
+        mostraMenuFinGrafico = false;
         newPiece();
         timer.start();
     }
@@ -141,7 +209,10 @@ public class TetrisGame extends JPanel implements ActionListener {
                 jugadorActual.setPuntos_tetris(score);
                 repo.save(jugadorActual);
             }
-            mostrarMenuFin();
+            // Activamos la bandera gráfica y hacemos visible la botonera real de Swing
+            mostraMenuFinGrafico = true;
+            panelBotonesFinal.setVisible(true);
+            repaint();
         }
     }
 
@@ -208,17 +279,6 @@ public class TetrisGame extends JPanel implements ActionListener {
         pieceDropped();
     }
 
-    private void mostrarMenuFin() {
-        Object[] options = {"Reintentar", "Cerrar"};
-        int n = JOptionPane.showOptionDialog(this, "GAME OVER\nScore: " + score, "Tetris",
-                JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
-        if (n == JOptionPane.YES_OPTION) {
-            playMusicaFondo();
-            start();
-        }
-        else SwingUtilities.getWindowAncestor(this).dispose();
-    }
-
     @Override
     public void actionPerformed(ActionEvent e) {
         dropOneLine();
@@ -227,22 +287,92 @@ public class TetrisGame extends JPanel implements ActionListener {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
         for (int i = 0; i < BOARD_HEIGHT; i++) {
             for (int j = 0; j < BOARD_WIDTH; j++) {
-                if (board[i][j] != 0) drawSquare(g, j * TILE_SIZE, i * TILE_SIZE, board[i][j]);
+                if (board[i][j] != 0) drawSquare(g2d, j * TILE_SIZE, i * TILE_SIZE, board[i][j]);
             }
         }
 
         if (isStarted && curPiece.getShape() != 0) {
             for (int i = 0; i < 4; i++) {
-                drawSquare(g, (curX + curPiece.x(i)) * TILE_SIZE, (curY + curPiece.y(i)) * TILE_SIZE, curPiece.getShape());
+                drawSquare(g2d, (curX + curPiece.x(i)) * TILE_SIZE, (curY + curPiece.y(i)) * TILE_SIZE, curPiece.getShape());
             }
         }
 
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("Monospaced", Font.BOLD, 18));
-        g.drawString("PUNTOS: " + score, 10, BOARD_HEIGHT * TILE_SIZE + 30);
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
+        g2d.drawString("PUNTOS: " + score, 10, BOARD_HEIGHT * TILE_SIZE + 30);
+
+        // INTERFAZ GRÁFICA DE FIN DE PARTIDA INTEGRADA (DASHBOARD)
+        if (mostraMenuFinGrafico) {
+            // Capa de oscurecimiento del fondo de juego
+            g2d.setColor(new Color(15, 15, 20, 220));
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+
+            // CORRECCIÓN DEL CONTENEDOR: 
+            // Escalamos la altura de la tarjeta a 330 para albergar holgadamente las filas espaciadas y la botonera
+            int cardW = 270;
+            int cardH = 330;
+            int cardX = (getWidth() - cardW) / 2;
+            int cardY = (BOARD_HEIGHT * TILE_SIZE - cardH) / 2;
+
+            // Sombra suave proyectada
+            g2d.setColor(new Color(0, 0, 0, 140));
+            g2d.fillRoundRect(cardX + 6, cardY + 6, cardW, cardH, 16, 16);
+
+            // Contenedor principal con degradado estético oscuro
+            GradientPaint cardGrad = new GradientPaint(cardX, cardY, new Color(35, 30, 30), cardX, cardY + cardH, new Color(20, 18, 18));
+            g2d.setPaint(cardGrad);
+            g2d.fillRoundRect(cardX, cardY, cardW, cardH, 16, 16);
+
+            Color accentColor = new Color(255, 75, 75);
+            String headerText = "FIN DE LA PARTIDA";
+
+            // Borde exterior perimetral de neón iluminado
+            g2d.setColor(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 160));
+            g2d.setStroke(new BasicStroke(2f));
+            g2d.drawRoundRect(cardX, cardY, cardW, cardH, 16, 16);
+            g2d.setStroke(new BasicStroke(1f));
+
+            FontMetrics fm;
+
+            // TÍTULO: Texto con efecto de resplandor (Glow)
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            fm = g2d.getFontMetrics();
+            int titleX = cardX + (cardW - fm.stringWidth(headerText)) / 2;
+            
+            g2d.setColor(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 40));
+            g2d.drawString(headerText, titleX - 1, cardY + 51);
+            g2d.drawString(headerText, titleX + 1, cardY + 51);
+            
+            g2d.setColor(accentColor);
+            g2d.drawString(headerText, titleX, cardY + 50);
+
+            // Divisor geométrico horizontal
+            g2d.setColor(new Color(0, 255, 255, 60));
+            g2d.drawLine(cardX + 25, cardY + 80, cardX + cardW - 25, cardY + 80);
+
+            // DATOS DE RENDIMIENTO DISTRIBUIDOS SIMÉTRICAMENTE
+            g2d.setFont(new Font("Monospaced", Font.BOLD, 14));
+            fm = g2d.getFontMetrics();
+
+            // Línea 1: Puntos finales en la zona alta de datos (Y = 135)
+            g2d.setColor(Color.CYAN);
+            g2d.drawString("PUNTOS:", cardX + 30, cardY + 135);
+            g2d.setColor(Color.WHITE);
+            String scoreStr = score + " PTS";
+            g2d.drawString(scoreStr, cardX + cardW - 30 - fm.stringWidth(scoreStr), cardY + 135);
+
+            // Línea 2: Nombre de Usuario colocado perfectamente en el espacio intermedio (Y = 195)
+            g2d.setColor(Color.CYAN);
+            g2d.drawString("USUARIO:", cardX + 30, cardY + 195);
+            g2d.setColor(Color.WHITE);
+            String opName = (jugadorActual != null) ? jugadorActual.getUsername().toUpperCase() : "INVITADO";
+            g2d.drawString(opName, cardX + cardW - 30 - fm.stringWidth(opName), cardY + 195);
+        }
     }
 
     private void drawSquare(Graphics g, int x, int y, int shape) {
