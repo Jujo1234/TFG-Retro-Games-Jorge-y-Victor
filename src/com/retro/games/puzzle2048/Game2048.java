@@ -6,13 +6,11 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Random;
-// --- IMPORTACIONES PARA AUDIO ---
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import java.io.File;
 
-// --- IMPORTACIONES PARA DB ---
 import com.retro.main.model.Usuario;
 import com.retro.main.repository.UsuarioRepository;
 
@@ -26,10 +24,19 @@ public class Game2048 extends JPanel {
     private Usuario jugadorActual;
     private UsuarioRepository repo;
 
-    // Componentes interactivos para el menú de fin de partida profesional
     private JPanel panelBotonesFinal;
     private JButton btnReiniciar;
     private JButton btnSalir;
+
+    // COMPONENTE GRÁFICO DEL AUDIO
+    private JButton btnSonido;
+    private boolean sonidoActivado = true; 
+
+    // VARIABLES PARA LA PANTALLA DE CONTROLES PREVIA PROFESIONAL
+    private boolean mostrarControles = true;
+    private Image imgControles;
+    private Timer timerParpadeo;
+    private boolean textoVisible = true;
 
     public Game2048(Usuario jugador, UsuarioRepository repo) {
         this.jugadorActual = jugador;
@@ -37,12 +44,33 @@ public class Game2048 extends JPanel {
         setPreferredSize(new Dimension(400, 500));
         setBackground(new Color(187, 173, 160));
         setFocusable(true);
-        // Usamos Layout nulo para posicionar milimétricamente la botonera sobre el fondo pintado
         this.setLayout(null);
+        
+        // CORRECCIÓN: Cargamos el archivo con la extensión .png real de tu carpeta
+        File fileImg = new File("res/2048Controles.png");
+        if (fileImg.exists()) {
+            imgControles = new ImageIcon(fileImg.getAbsolutePath()).getImage();
+        }
+
+        // Temporizador para el efecto parpadeante retro del texto de inicio
+        timerParpadeo = new Timer(500, e -> {
+            textoVisible = !textoVisible;
+            repaint();
+        });
+        timerParpadeo.start();
         
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
+                // Si la pantalla de guía está activa, cualquier tecla arranca la partida
+                if (mostrarControles) {
+                    mostrarControles = false;
+                    timerParpadeo.stop();
+                    btnSonido.setVisible(true);
+                    reiniciarJuego();
+                    return;
+                }
+
                 if (gameOver || win) return;
                 
                 boolean moved = false;
@@ -61,18 +89,58 @@ public class Game2048 extends JPanel {
             }
         });
         
-        // Inicializamos los botones ocultos del menú final
+        // Inicializamos los botones de la interfaz
         inicializarBotoneraFinal();
+        inicializarBotonSonido();
+    }
+
+    private void inicializarBotonSonido() {
+        btnSonido = new JButton("SOUND: ON");
+        btnSonido.setBounds(265, 16, 115, 32);
+        btnSonido.setFont(new Font("Arial", Font.BOLD, 13));
         
-        reiniciarJuego();
+        // DISEÑO INTEGRADO 2048: Color marrón de los marcadores originales
+        btnSonido.setBackground(new Color(143, 122, 102));
+        btnSonido.setForeground(Color.WHITE);
+        btnSonido.setBorder(null); 
+        btnSonido.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnSonido.setFocusable(false); 
+        btnSonido.setVisible(false); // Oculto durante la pantalla de controles
+
+        btnSonido.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) { 
+                btnSonido.setBackground(new Color(119, 110, 101)); 
+            }
+            @Override
+            public void mouseExited(MouseEvent e) { 
+                btnSonido.setBackground(new Color(143, 122, 102)); 
+            }
+        });
+
+        btnSonido.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                sonidoActivado = !sonidoActivado;
+                if (sonidoActivado) {
+                    btnSonido.setText("SOUND: ON");
+                    btnSonido.setBackground(new Color(143, 122, 102));
+                } else {
+                    btnSonido.setText("SOUND: OFF");
+                    btnSonido.setBackground(new Color(175, 160, 145)); 
+                }
+                repaint();
+                requestFocusInWindow(); 
+            }
+        });
+
+        this.add(btnSonido);
     }
 
     private void inicializarBotoneraFinal() {
         panelBotonesFinal = new JPanel(new GridLayout(1, 2, 15, 0));
         panelBotonesFinal.setOpaque(false);
         
-        // CORRECCIÓN MATEMÁTICA DE POSICIÓN:
-        // Bajamos el panel a la coordenada Y = 295 para que deje espacio libre a los puntos e identificación de usuario.
         int panelW = 300;
         int panelH = 38;
         int panelX = (400 - panelW) / 2;
@@ -120,8 +188,8 @@ public class Game2048 extends JPanel {
         });
     }
 
-    // --- SISTEMA DE AUDIO PARA EFECTOS ---
     private void playEfecto(String archivo) {
+        if (!sonidoActivado || mostrarControles) return; 
         try {
             File soundPath = new File("res/" + archivo);
             if (soundPath.exists()) {
@@ -211,7 +279,6 @@ public class Game2048 extends JPanel {
     }
 
     private void checkGameState() {
-        // Victoria
         for (int r = 0; r < 4; r++) {
             for (int c = 0; c < 4; c++) {
                 if (board[r][c] == 2048) {
@@ -224,7 +291,6 @@ public class Game2048 extends JPanel {
             }
         }
 
-        // ¿Quedan movimientos?
         for (int r = 0; r < 4; r++) {
             for (int c = 0; c < 4; c++) {
                 if (board[r][c] == 0) return;
@@ -233,7 +299,6 @@ public class Game2048 extends JPanel {
             }
         }
 
-        // Derrota
         gameOver = true;
         guardarPuntosBaseDatos();
         playEfecto("derrota.wav"); 
@@ -253,6 +318,58 @@ public class Game2048 extends JPanel {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+        // --- ESCALADO PROPORCIONAL DE LA GUÍA DE CONTROLES (ASPECT RATIO PROFESIONAL) ---
+        if (mostrarControles) {
+            int panelW = getWidth();
+            int panelH = getHeight();
+            
+            // Fondo oscuro base retro uniforme
+            g2.setColor(new Color(15, 15, 18));
+            g2.fillRect(0, 0, panelW, panelH);
+
+            if (imgControles != null) {
+                int imgW = imgControles.getWidth(this);
+                int imgH = imgControles.getHeight(this);
+                
+                int maxW = panelW - 30;
+                int maxH = panelH - 120;
+                
+                double scaleX = (double) maxW / imgW;
+                double scaleY = (double) maxH / imgH;
+                double scale = Math.min(scaleX, scaleY);
+                
+                int targetW = (int) (imgW * scale);
+                int targetH = (int) (imgH * scale);
+                
+                int renderX = (panelW - targetW) / 2;
+                int renderY = (panelH - targetH) / 2 - 20;
+                
+                g2.drawImage(imgControles, renderX, renderY, targetW, targetH, this);
+                
+                // Marco neón cian envolvente
+                g2.setColor(new Color(0, 255, 255, 80));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRect(renderX - 2, renderY - 2, targetW + 4, targetH + 4);
+                g2.setStroke(new BasicStroke(1f));
+            } else {
+                g2.setColor(Color.CYAN);
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 20));
+                g2.drawString("GUÍA DE CONTROLES", 50, 150);
+            }
+
+            if (textoVisible) {
+                g2.setFont(new Font("Consolas", Font.BOLD, 13));
+                g2.setColor(Color.GREEN);
+                FontMetrics fm = g2.getFontMetrics();
+                String msgInicio = "PULSA CUALQUIER TECLA PARA EMPEZAR";
+                int xMsg = (panelW - fm.stringWidth(msgInicio)) / 2;
+                g2.drawString(msgInicio, xMsg, panelH - 45);
+            }
+            return; 
+        }
+        // -------------------------------------------------------------------------------
+
+        // Marcador estético de puntos superior izquierdo
         g.setColor(new Color(119, 110, 101));
         g.setFont(new Font("Arial", Font.BOLD, 25));
         g.drawString("Puntos: " + score, 20, 40);
@@ -263,28 +380,24 @@ public class Game2048 extends JPanel {
             }
         }
 
-        // COMPONENTE DE RENDERIZADO DEL MENÚ DE FIN DE PARTIDA INTEGRADO
         if (gameOver || win) {
-            // Fondo de contraste oscuro unificado
+            btnSonido.setVisible(false);
+
             g2.setColor(new Color(15, 15, 20, 220));
             g2.fillRect(0, 0, getWidth(), getHeight());
 
-            // CORRECCIÓN DE CAJA: Aumentamos la altura de la tarjeta a 310 para albergar holgadamente todas las filas
             int cardW = 340;
             int cardH = 310;
             int cardX = (getWidth() - cardW) / 2;
             int cardY = (getHeight() - cardH) / 2;
 
-            // Sombra paralela suave
             g2.setColor(new Color(0, 0, 0, 120));
             g2.fillRoundRect(cardX + 5, cardY + 5, cardW, cardH, 15, 15);
 
-            // Contenedor principal degradado
             GradientPaint cardGrad = new GradientPaint(cardX, cardY, new Color(35, 30, 30), cardX, cardY + cardH, new Color(20, 18, 18));
             g2.setPaint(cardGrad);
             g2.fillRoundRect(cardX, cardY, cardW, cardH, 15, 15);
 
-            // Textos y acentuaciones de color según el estado lógico del juego
             String headerText;
             Color accentColor;
             if (win) {
@@ -295,15 +408,13 @@ public class Game2048 extends JPanel {
                 accentColor = new Color(255, 75, 75);
             }
 
-            // Borde exterior reactivo de estilo neón
             g2.setColor(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 160));
             g2.setStroke(new BasicStroke(2f));
             g2.drawRoundRect(cardX, cardY, cardW, cardH, 15, 15);
-            g2.setStroke(new BasicStroke(1f)); // Restaurar pincel base
+            g2.setStroke(new BasicStroke(1f)); 
 
             FontMetrics fm;
 
-            // TÍTULO CENTRAL: Efecto luminoso superpuesto (Glow)
             g2.setFont(new Font("Segoe UI", Font.BOLD, 26));
             fm = g2.getFontMetrics();
             int titleX = cardX + (cardW - fm.stringWidth(headerText)) / 2;
@@ -315,27 +426,25 @@ public class Game2048 extends JPanel {
             g2.setColor(accentColor);
             g2.drawString(headerText, titleX, cardY + 50);
 
-            // Divisor geométrico
             g2.setColor(new Color(0, 255, 255, 60));
             g2.drawLine(cardX + 30, cardY + 80, cardX + cardW - 30, cardY + 80);
 
-            // SUBPANEL DE RENDIMIENTO AJUSTADO AL PÍXEL
             g2.setFont(new Font("Monospaced", Font.BOLD, 15));
             fm = g2.getFontMetrics();
 
-            // Línea 1: Puntos obtenidos colocados en la parte alta (Y = 125) para que no choquen con los botones
             g2.setColor(Color.CYAN);
             g2.drawString("PUNTOS:", cardX + 40, cardY + 125);
             g2.setColor(Color.WHITE);
             String scoreStr = score + " PTS";
             g2.drawString(scoreStr, cardX + cardW - 40 - fm.stringWidth(scoreStr), cardY + 125);
 
-            // Línea 2: Identificación del Jugador colocada justo en la parte baja de los botones (Y = 260)
             g2.setColor(Color.CYAN);
             g2.drawString("USUARIO:", cardX + 40, cardY + 260);
             g2.setColor(Color.WHITE);
             String opName = (jugadorActual != null) ? jugadorActual.getUsername().toUpperCase() : "INVITADO";
             g2.drawString(opName, cardX + cardW - 40 - fm.stringWidth(opName), cardY + 260);
+        } else {
+            if (!mostrarControles) btnSonido.setVisible(true); 
         }
     }
 

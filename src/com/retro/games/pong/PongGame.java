@@ -37,17 +37,58 @@ public class PongGame extends JPanel implements ActionListener {
     private JButton btnReiniciar;
     private JButton btnSalir;
 
+    // COMPONENTE GRÁFICO NUEVO: BOTÓN DE AUDIO MUTE
+    private JButton btnSonido;
+    private boolean sonidoActivado = true; // Controla si se reproducen los efectos y choques
+
+    // VARIABLES EXCLUSIVAS PARA LA PANTALLA DE CONTROLES PREVIA
+    private boolean mostrarControles = true;
+    private Image imgControles;
+    private Timer timerParpadeo;
+    private boolean textoVisible = true;
+
     public PongGame() {
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
-        // Usamos un diseño nulo (Absolute Positioning) para poder ubicar de forma exacta
-        // los botones del menú final encima de los gráficos del juego sin alterar vuestro flujo.
         this.setLayout(null);
+
+        // --- DOBLE SISTEMA DE SEGURIDAD PARA CARGA DE IMAGEN ---
+        File fileImgPng = new File("res/pongControles.png");
+        File fileImgJpg = new File("res/pongControles.jpg");
+        
+        if (fileImgPng.exists()) {
+            imgControles = new ImageIcon(fileImgPng.getAbsolutePath()).getImage();
+        } else if (fileImgJpg.exists()) {
+            imgControles = new ImageIcon(fileImgJpg.getAbsolutePath()).getImage();
+        }
+
+        // Temporizador para el efecto parpadeante retro del texto de inicio
+        timerParpadeo = new Timer(500, e -> {
+            textoVisible = !textoVisible;
+            repaint();
+        });
+        timerParpadeo.start();
 
         this.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
+                // Si la pantalla de guía está activa, cualquier tecla la apaga e inicia el juego
+                if (mostrarControles) {
+                    mostrarControles = false;
+                    if (timerParpadeo != null) timerParpadeo.stop();
+                    btnSonido.setVisible(true);
+                    
+                    ballX = WIDTH / 2 - BALL_SIZE / 2;
+                    ballY = HEIGHT / 2 - BALL_SIZE / 2;
+                    waiting = true;
+                    waitFrames = 0;
+                    
+                    timer.start(); 
+                    repaint();
+                    return;
+                }
+
                 if (e.getKeyCode() == KeyEvent.VK_W) wPressed = true;
                 if (e.getKeyCode() == KeyEvent.VK_S) sPressed = true;
                 if (e.getKeyCode() == KeyEvent.VK_UP) upPressed = true;
@@ -62,18 +103,52 @@ public class PongGame extends JPanel implements ActionListener {
             }
         });
 
-        // Inicialización y diseño de la botonera final (oculta por defecto)
+        // Inicializamos los botones de la interfaz
         inicializarBotoneraFinal();
+        inicializarBotónSonido();
 
+        // El Timer se declara pero se inicia al quitar los controles para que no congele el renderizado
         timer = new Timer(10, this); 
-        timer.start();
+        
+        // Forzamos la carga asíncrona de la interfaz de usuario
+        SwingUtilities.invokeLater(() -> repaint());
+    }
+
+    private void inicializarBotónSonido() {
+        btnSonido = new JButton("AUDIO: ON");
+        btnSonido.setBounds((WIDTH - 120) / 2, HEIGHT - 45, 120, 30);
+        btnSonido.setFont(new Font("Consolas", Font.BOLD, 12));
+        btnSonido.setBackground(new Color(25, 25, 30));
+        btnSonido.setForeground(Color.CYAN);
+        btnSonido.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 1));
+        btnSonido.setFocusable(false); 
+        btnSonido.setVisible(false); 
+
+        btnSonido.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                sonidoActivado = !sonidoActivado;
+                if (sonidoActivado) {
+                    btnSonido.setText("AUDIO: ON");
+                    btnSonido.setForeground(Color.CYAN);
+                    btnSonido.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 1));
+                } else {
+                    btnSonido.setText("AUDIO: OFF");
+                    btnSonido.setForeground(Color.LIGHT_GRAY);
+                    btnSonido.setBorder(javax.swing.BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+                }
+                repaint();
+                requestFocusInWindow(); 
+            }
+        });
+
+        this.add(btnSonido);
     }
 
     private void inicializarBotoneraFinal() {
         panelBotonesFinal = new JPanel(new GridLayout(1, 2, 20, 0));
         panelBotonesFinal.setOpaque(false);
         
-        // El panel se posiciona matemáticamente en la zona baja interior de la tarjeta de resultados
         int panelW = 460;
         int panelH = 42;
         int panelX = (WIDTH - panelW) / 2;
@@ -90,7 +165,7 @@ public class PongGame extends JPanel implements ActionListener {
 
         panelBotonesFinal.add(btnReiniciar);
         panelBotonesFinal.add(btnSalir);
-        panelBotonesFinal.setVisible(false); // Invisible hasta que termine el juego
+        panelBotonesFinal.setVisible(false); 
         this.add(panelBotonesFinal);
     }
 
@@ -102,7 +177,6 @@ public class PongGame extends JPanel implements ActionListener {
         b.setBorder(new LineBorder(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 120), 1));
         b.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        // Efecto dinámico de iluminación al pasar el ratón (Hover)
         b.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) { 
                 b.setBackground(new Color(55, 55, 68)); 
@@ -138,10 +212,12 @@ public class PongGame extends JPanel implements ActionListener {
     }
 
     public void detenerJuego() {
+        if (timerParpadeo != null) timerParpadeo.stop();
         if (timer != null) timer.stop();
     }
 
     private void playSound(String fileName) {
+        if (!sonidoActivado || mostrarControles) return; 
         try {
             File soundPath = new File("res/" + fileName);
             if (soundPath.exists()) {
@@ -156,7 +232,7 @@ public class PongGame extends JPanel implements ActionListener {
     }
 
     private void update() {
-        if (gameFinished) return; 
+        if (mostrarControles || gameFinished) return; 
 
         if (wPressed && p1Y > 0) p1Y -= 5;
         if (sPressed && p1Y < HEIGHT - PADDLE_HEIGHT) p1Y += 5;
@@ -179,7 +255,6 @@ public class PongGame extends JPanel implements ActionListener {
             if (timeLeft <= 0) {
                 gameFinished = true;
                 timer.stop();
-                // Al finalizar el tiempo, activamos el contenedor de los botones interactivos
                 panelBotonesFinal.setVisible(true);
             }
         }
@@ -192,14 +267,12 @@ public class PongGame extends JPanel implements ActionListener {
             playSound("choque.wav"); 
         }
 
-        // --- CORRECCIÓN COLISIÓN JUGADOR 1 ---
         if (ballX >= 20 && ballX <= 35 && ballY + BALL_SIZE >= p1Y && ballY <= p1Y + PADDLE_HEIGHT && ballXSpeed < 0) {
             ballXSpeed = Math.abs(ballXSpeed);
             ballX = 36; 
             playSound("choque.wav"); 
         }
 
-        // --- COLISIÓN JUGADOR 2 ---
         if (ballX >= WIDTH - 50 && ballX <= WIDTH - 35 && ballY + BALL_SIZE >= p2Y && ballY <= p2Y + PADDLE_HEIGHT && ballXSpeed > 0) {
             ballXSpeed = -Math.abs(ballXSpeed);
             ballX = WIDTH - 51; 
@@ -219,6 +292,7 @@ public class PongGame extends JPanel implements ActionListener {
     }
 
     private void resetBall() {
+        if (mostrarControles) return;
         ballX = WIDTH / 2 - BALL_SIZE / 2;
         ballY = HEIGHT / 2 - BALL_SIZE / 2;
         ballXSpeed *= -1;
@@ -233,21 +307,67 @@ public class PongGame extends JPanel implements ActionListener {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Renderizado del campo intermedio (Línea discontinua)
+        // --- ESCALADO PROPORCIONAL SEGURO ---
+        if (mostrarControles) {
+            int panelW = getWidth();
+            int panelH = getHeight();
+            
+            g2d.setColor(new Color(15, 15, 18));
+            g2d.fillRect(0, 0, panelW, panelH);
+
+            if (imgControles != null) {
+                int imgW = imgControles.getWidth(this);
+                int imgH = imgControles.getHeight(this);
+                
+                int maxW = panelW - 80;
+                int maxH = panelH - 120;
+                
+                double scale = Math.min((double) maxW / imgW, (double) maxH / imgH);
+                
+                int targetW = (int) (imgW * scale);
+                int targetH = (int) (imgH * scale);
+                
+                int renderX = (panelW - targetW) / 2;
+                int renderY = (panelH - targetH) / 2 - 20;
+                
+                g2d.drawImage(imgControles, renderX, renderY, targetW, targetH, this);
+                
+                g2d.setColor(new Color(0, 255, 255, 80));
+                g2d.setStroke(new BasicStroke(1.5f));
+                g2d.drawRect(renderX - 2, renderY - 2, targetW + 4, targetH + 4);
+                g2d.setStroke(new BasicStroke(1f));
+            } else {
+                g2d.setColor(Color.CYAN);
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 22));
+                g2d.drawString("GUÍA DE CONTROLES", 50, 150);
+            }
+
+            if (textoVisible) {
+                g2d.setFont(new Font("Consolas", Font.BOLD, 14));
+                g2d.setColor(Color.GREEN);
+                FontMetrics fm = g2d.getFontMetrics();
+                String msgInicio = "PULSA CUALQUIER TECLA PARA EMPEZAR";
+                int xMsg = (panelW - fm.stringWidth(msgInicio)) / 2;
+                g2d.drawString(msgInicio, xMsg, panelH - 50);
+            }
+            return; 
+        }
+
+        // Campo intermedio (Línea discontinua)
         g2d.setColor(Color.DARK_GRAY);
         for(int i=0; i<HEIGHT; i+=20) g2d.drawLine(WIDTH/2, i, WIDTH/2, i+10);
 
-        // Renderizado de las palas de juego
+        // Palas de juego
         g2d.setColor(Color.WHITE);
         g2d.fillRect(20, p1Y, PADDLE_WIDTH, PADDLE_HEIGHT);
         g2d.fillRect(WIDTH - 35, p2Y, PADDLE_WIDTH, PADDLE_HEIGHT);
         
-        // Renderizado de la pelota si el juego está activo
+        // Pelota activa
         if (!gameFinished) {
             g2d.fillOval(ballX, ballY, BALL_SIZE, BALL_SIZE);
         }
 
-        // Interfaz de puntuación superior estandarizada
+        // Puntuación superior
         g2d.setFont(new Font("Consolas", Font.BOLD, 40));
         g2d.drawString(score1 + " - " + score2, WIDTH/2 - 60, 50);
         
@@ -255,37 +375,34 @@ public class PongGame extends JPanel implements ActionListener {
         g2d.setColor(Color.GRAY);
         g2d.drawString("Tiempo: " + timeLeft + "s", WIDTH/2 - 55, 80);
 
-        // Feedback visual de gol / saque inminente
+        // Saque inminente
         if (waiting && !gameFinished) {
             g2d.setFont(new Font("Segoe UI", Font.BOLD, 18));
             g2d.setColor(Color.CYAN);
             FontMetrics fm = g2d.getFontMetrics();
-            String textGol = "¡GOL! PREPARANDO SAQUE...";
+            String textGol = " PREPARANDO SAQUE...";
             g2d.drawString(textGol, (WIDTH - fm.stringWidth(textGol)) / 2, HEIGHT - 80);
         }
 
-        // PANTALLA FINAL DE RESULTADOS PROFESIONAL (DASHBOARD)
+        // Tarjeta de resultados final
         if (gameFinished) {
-            // Fondo traslúcido para oscurecer el campo
+            btnSonido.setVisible(false);
+
             g2d.setColor(new Color(10, 10, 15, 230));
             g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
-            // Caja central adaptativa aumentada ligeramente para albergar con soltura los botones reales
             int panelW = 560;
             int panelH = 320;
             int panelX = (WIDTH - panelW) / 2;
             int panelY = (HEIGHT - panelH) / 2 - 10;
 
-            // Efecto sombreado
             g2d.setColor(new Color(0, 0, 0, 160));
             g2d.fillRoundRect(panelX + 6, panelY + 6, panelW, panelH, 18, 18);
 
-            // Fondo del contenedor principal
             GradientPaint panelGrad = new GradientPaint(panelX, panelY, new Color(25, 25, 35), panelX, panelY + panelH, new Color(15, 15, 20));
             g2d.setPaint(panelGrad);
             g2d.fillRoundRect(panelX, panelY, panelW, panelH, 18, 18);
 
-            // Selección de color y texto dinámico según el resultado final
             String mensaje;
             Color accentColor;
             if (score1 > score2) {
@@ -299,7 +416,6 @@ public class PongGame extends JPanel implements ActionListener {
                 accentColor = Color.YELLOW;
             }
 
-            // Borde perimetral estilo neón
             g2d.setColor(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 180));
             g2d.setStroke(new BasicStroke(2f));
             g2d.drawRoundRect(panelX, panelY, panelW, panelH, 18, 18);
@@ -307,7 +423,6 @@ public class PongGame extends JPanel implements ActionListener {
 
             FontMetrics fm;
 
-            // TÍTULO: Efecto de texto iluminado (Glow)
             g2d.setFont(new Font("Segoe UI", Font.BOLD, 36));
             fm = g2d.getFontMetrics();
             int msgX = panelX + (panelW - fm.stringWidth(mensaje)) / 2;
@@ -321,31 +436,28 @@ public class PongGame extends JPanel implements ActionListener {
             g2d.setColor(accentColor);
             g2d.drawString(mensaje, msgX, panelY + 55);
 
-            // Separador de diseño
             g2d.setColor(new Color(0, 255, 255, 80));
             g2d.drawLine(panelX + 40, panelY + 85, panelX + panelW - 40, panelY + 85);
 
-            // CONTENEDOR DE ESTADÍSTICAS DEL MARCADOR
             g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
             fm = g2d.getFontMetrics();
 
-            // Marcador Jugador 1
             g2d.setColor(Color.CYAN);
             g2d.drawString("PUNTUACIÓN JUGADOR 1:", panelX + 50, panelY + 135);
             g2d.setColor(Color.WHITE);
             String pts1 = score1 + " GOLES";
             g2d.drawString(pts1, panelX + panelW - 50 - fm.stringWidth(pts1), panelY + 135);
 
-            // Marcador Jugador 2
             g2d.setColor(Color.CYAN);
             g2d.drawString("PUNTUACIÓN JUGADOR 2:", panelX + 50, panelY + 180);
             g2d.setColor(Color.WHITE);
             String pts2 = score2 + " GOLES";
             g2d.drawString(pts2, panelX + panelW - 50 - fm.stringWidth(pts2), panelY + 180);
 
-            // Separador de diseño inferior sutil
             g2d.setColor(new Color(255, 255, 255, 30));
             g2d.drawLine(panelX + 40, panelY + 215, panelX + panelW - 40, panelY + 215);
+        } else {
+            if (!mostrarControles) btnSonido.setVisible(true); 
         }
     }
 

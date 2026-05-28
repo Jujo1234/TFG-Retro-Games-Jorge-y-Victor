@@ -5,13 +5,11 @@ import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Random;
-// --- IMPORTACIONES PARA AUDIO ---
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import java.io.File;
 
-// --- IMPORTACIONES PARA DB ---
 import com.retro.main.model.Usuario;
 import com.retro.main.repository.UsuarioRepository;
 
@@ -31,35 +29,67 @@ public class TetrisGame extends JPanel implements ActionListener {
     private int[][] board;
     private Tetromino curPiece;
 
-    // --- VARIABLES DE AUDIO ---
     private Clip musicaFondo;
+    private boolean musicaActivada = true; 
+    private boolean efectosActivados = true; 
 
-    // --- VARIABLES DE SESIÓN ---
-    private Usuario jugadorActual;
+    private Usuario jugadorActual; 
     private UsuarioRepository repo;
 
-    // Componentes interactivos para el menú de fin de partida profesional
     private JPanel panelBotonesFinal;
     private JButton btnReiniciar;
     private JButton btnSalir;
     private boolean mostraMenuFinGrafico = false;
 
+    private JButton btnMusica;
+    private JButton btnEfectos;
+
+    // VARIABLES PARA LA PANTALLA DE CONTROLES PREVIA PROFESIONAL
+    private boolean mostrarControles = true;
+    private Image imgControles;
+    private Timer timerParpadeo;
+    private boolean textoVisible = true;
+
     public TetrisGame(Usuario jugador, UsuarioRepository repo) {
         this.jugadorActual = jugador;
         this.repo = repo;
+        
         setPreferredSize(new Dimension(BOARD_WIDTH * TILE_SIZE, BOARD_HEIGHT * TILE_SIZE + 50));
         setBackground(new Color(20, 20, 20));
         setFocusable(true);
-        // Usamos Layout nulo para posicionar de forma milimétrica la botonera final sobre los gráficos
         this.setLayout(null);
         
+        // Cargar la guía de controles en formato PNG
+        File fileImg = new File("res/tetrisControles.png");
+        if (fileImg.exists()) {
+            imgControles = new ImageIcon(fileImg.getAbsolutePath()).getImage();
+        }
+
         board = new int[BOARD_HEIGHT][BOARD_WIDTH];
         curPiece = new Tetromino();
         timer = new Timer(400, this); 
         
+        // Temporizador para el efecto parpadeante retro del texto de inicio
+        timerParpadeo = new Timer(500, e -> {
+            textoVisible = !textoVisible;
+            repaint();
+        });
+        timerParpadeo.start();
+        
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
+                // Al pulsar cualquier tecla en la pantalla de controles, inicia la partida
+                if (mostrarControles) {
+                    mostrarControles = false;
+                    timerParpadeo.stop();
+                    btnMusica.setVisible(true);
+                    btnEfectos.setVisible(true);
+                    playMusicaFondo();
+                    start();
+                    return;
+                }
+
                 if (!isStarted) return;
 
                 int key = e.getKeyCode();
@@ -71,24 +101,73 @@ public class TetrisGame extends JPanel implements ActionListener {
             }
         });
 
-        // Inicializamos los botones ocultos del menú final integrado
-        inicializarBotoneraFinal();
-
-        // Iniciamos música y juego con delay
-        Timer initDelay = new Timer(200, e -> {
-            playMusicaFondo();
-            start();
+        // Botón de Música de fondo
+        btnMusica = new JButton("MÚSICA: ON");
+        btnMusica.setBounds(110, BOARD_HEIGHT * TILE_SIZE + 12, 85, 26);
+        btnMusica.setFont(new Font("Consolas", Font.BOLD, 10));
+        btnMusica.setBackground(new Color(30, 30, 45));
+        btnMusica.setForeground(Color.CYAN);
+        btnMusica.setBorder(BorderFactory.createLineBorder(Color.CYAN, 1));
+        btnMusica.setFocusable(false);
+        btnMusica.setVisible(false); // Oculto temporalmente durante los controles
+        
+        btnMusica.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                musicaActivada = !musicaActivada;
+                if (musicaActivada) {
+                    btnMusica.setText("MÚSICA: ON");
+                    btnMusica.setForeground(Color.CYAN);
+                    btnMusica.setBorder(BorderFactory.createLineBorder(Color.CYAN, 1));
+                    playMusicaFondo();
+                } else {
+                    btnMusica.setText("MÚSICA: OFF");
+                    btnMusica.setForeground(Color.LIGHT_GRAY);
+                    btnMusica.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+                    stopMusica();
+                }
+                repaint();
+                requestFocusInWindow();
+            }
         });
-        initDelay.setRepeats(false);
-        initDelay.start();
+        this.add(btnMusica);
+
+        // Botón de Efectos de Sonido
+        btnEfectos = new JButton("FX: ON");
+        btnEfectos.setBounds(205, BOARD_HEIGHT * TILE_SIZE + 12, 85, 26);
+        btnEfectos.setFont(new Font("Consolas", Font.BOLD, 10));
+        btnEfectos.setBackground(new Color(30, 30, 45));
+        btnEfectos.setForeground(Color.CYAN);
+        btnEfectos.setBorder(BorderFactory.createLineBorder(Color.CYAN, 1));
+        btnEfectos.setFocusable(false);
+        btnEfectos.setVisible(false); // Oculto temporalmente durante los controles
+        
+        btnEfectos.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                efectosActivados = !efectosActivados;
+                if (efectosActivados) {
+                    btnEfectos.setText("FX: ON");
+                    btnEfectos.setForeground(Color.CYAN);
+                    btnEfectos.setBorder(BorderFactory.createLineBorder(Color.CYAN, 1));
+                } else {
+                    btnEfectos.setText("FX: OFF");
+                    btnEfectos.setForeground(Color.LIGHT_GRAY);
+                    btnEfectos.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+                }
+                repaint();
+                requestFocusInWindow();
+            }
+        });
+        this.add(btnEfectos);
+
+        inicializarBotoneraFinal();
     }
 
     private void inicializarBotoneraFinal() {
         panelBotonesFinal = new JPanel(new GridLayout(1, 2, 12, 0));
         panelBotonesFinal.setOpaque(false);
         
-        // CORRECCIÓN DE COORDENADAS: 
-        // Bajamos la botonera a la coordenada Y = 400 para que no tape los textos informativos
         int panelW = 240;
         int panelH = 36;
         int panelX = (300 - panelW) / 2;
@@ -138,16 +217,20 @@ public class TetrisGame extends JPanel implements ActionListener {
         });
     }
 
-    // --- LÓGICA DE AUDIO ---
     private void playMusicaFondo() {
+        if (!musicaActivada || mostrarControles) return;
         try {
-            File musicPath = new File("res/musica_tetris.wav");
-            if (musicPath.exists()) {
-                AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
-                musicaFondo = AudioSystem.getClip();
-                musicaFondo.open(audioInput);
-                musicaFondo.loop(Clip.LOOP_CONTINUOUSLY);
-                musicaFondo.start();
+            if (musicaFondo != null) {
+                if (!musicaFondo.isRunning()) musicaFondo.start();
+            } else {
+                File musicPath = new File("res/musica_tetris.wav");
+                if (musicPath.exists()) {
+                    AudioInputStream audioInput = AudioSystem.getAudioInputStream(musicPath);
+                    musicaFondo = AudioSystem.getClip();
+                    musicaFondo.open(audioInput);
+                    musicaFondo.loop(Clip.LOOP_CONTINUOUSLY);
+                    musicaFondo.start();
+                }
             }
         } catch (Exception e) {
             System.err.println("Error música Tetris: " + e.getMessage());
@@ -155,6 +238,7 @@ public class TetrisGame extends JPanel implements ActionListener {
     }
 
     private void playEfecto(String archivo) {
+        if (!efectosActivados || mostrarControles) return;
         try {
             File soundPath = new File("res/" + archivo);
             if (soundPath.exists()) {
@@ -174,7 +258,6 @@ public class TetrisGame extends JPanel implements ActionListener {
         }
     }
 
-    // MÉTODO PARA DETENER TODO DESDE EL MENÚ
     public void pararMusica() {
         stopMusica();
         if (musicaFondo != null) musicaFondo.close();
@@ -202,14 +285,13 @@ public class TetrisGame extends JPanel implements ActionListener {
         if (!tryMove(curPiece, curX, curY)) {
             isStarted = false;
             timer.stop();
-            stopMusica(); // Parar música al perder
-            playEfecto("derrota.wav"); // Sonido reutilizado
+            stopMusica(); 
+            playEfecto("derrota.wav"); 
 
             if (jugadorActual != null) {
-                jugadorActual.setPuntos_tetris(score);
+                jugadorActual.setPuntos_tetris(score); 
                 repo.save(jugadorActual);
             }
-            // Activamos la bandera gráfica y hacemos visible la botonera real de Swing
             mostraMenuFinGrafico = true;
             panelBotonesFinal.setVisible(true);
             repaint();
@@ -265,7 +347,7 @@ public class TetrisGame extends JPanel implements ActionListener {
         }
         if (linesFilled > 0) {
             score += linesFilled * 100;
-            playEfecto("puntos.wav"); // Sonido al ganar puntos
+            playEfecto("puntos.wav"); 
             repaint();
         }
     }
@@ -290,6 +372,71 @@ public class TetrisGame extends JPanel implements ActionListener {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
+        // --- ESCALADO PROPORCIONAL DE LA GUÍA DE CONTROLES (MANTENIENDO RELACIÓN DE ASPECTO) ---
+        if (mostrarControles) {
+            int panelW = getWidth();
+            int panelH = getHeight();
+            
+            // Fondo oscuro base uniforme
+            g2d.setColor(new Color(15, 15, 18));
+            g2d.fillRect(0, 0, panelW, panelH);
+
+            if (imgControles != null) {
+                int imgW = imgControles.getWidth(this);
+                int imgH = imgControles.getHeight(this);
+                
+                // Calculamos las dimensiones máximas permitidas dejando margen estético
+                int maxW = panelW - 30;
+                int maxH = panelH - 120;
+                
+                // Algoritmo de escalado proporcional (Aspect Ratio)
+                double scaleX = (double) maxW / imgW;
+                double scaleY = (double) maxH / imgH;
+                double scale = Math.min(scaleX, scaleY);
+                
+                int targetW = (int) (imgW * scale);
+                int targetH = (int) (imgH * scale);
+                
+                // Centrado dinámico absoluto de la imagen en el panel
+                int renderX = (panelW - targetW) / 2;
+                int renderY = (panelH - targetH) / 2 - 20;
+                
+                // Renderizado de la imagen limpia sin distorsión
+                g2d.drawImage(imgControles, renderX, renderY, targetW, targetH, this);
+                
+                // Marco exterior flotante estilo neón cian envolvente
+                g2d.setColor(new Color(0, 255, 255, 80));
+                g2d.setStroke(new BasicStroke(1.5f));
+                g2d.drawRect(renderX - 2, renderY - 2, targetW + 4, targetH + 4);
+                g2d.setStroke(new BasicStroke(1f));
+            } else {
+                g2d.setColor(Color.CYAN);
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 20));
+                g2d.drawString("GUÍA DE CONTROLES", 50, 150);
+            }
+
+            // Texto arcade parpadeante inferior perfectamente alineado
+            if (textoVisible) {
+                g2d.setFont(new Font("Consolas", Font.BOLD, 13));
+                g2d.setColor(Color.GREEN);
+                FontMetrics fm = g2d.getFontMetrics();
+                String msgInicio = "PULSA CUALQUIER TECLA PARA EMPEZAR";
+                int xMsg = (panelW - fm.stringWidth(msgInicio)) / 2;
+                g2d.drawString(msgInicio, xMsg, panelH - 45);
+            }
+            return; // Interrumpe el flujo gráfico para no superponer componentes
+        }
+        // ----------------------------------------------------------------------------------------
+
+        // CUADRÍCULA ESTILO SNAKE
+        g2d.setColor(new Color(25, 25, 35));
+        for (int i = 0; i <= BOARD_WIDTH * TILE_SIZE; i += TILE_SIZE) {
+            g2d.drawLine(i, 0, i, BOARD_HEIGHT * TILE_SIZE);
+        }
+        for (int i = 0; i <= BOARD_HEIGHT * TILE_SIZE; i += TILE_SIZE) {
+            g2d.drawLine(0, i, BOARD_WIDTH * TILE_SIZE, i);
+        }
+
         for (int i = 0; i < BOARD_HEIGHT; i++) {
             for (int j = 0; j < BOARD_WIDTH; j++) {
                 if (board[i][j] != 0) drawSquare(g2d, j * TILE_SIZE, i * TILE_SIZE, board[i][j]);
@@ -303,27 +450,24 @@ public class TetrisGame extends JPanel implements ActionListener {
         }
 
         g2d.setColor(Color.WHITE);
-        g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
-        g2d.drawString("PUNTOS: " + score, 10, BOARD_HEIGHT * TILE_SIZE + 30);
+        g2d.setFont(new Font("Monospaced", Font.BOLD, 14));
+        g2d.drawString("PUNTOS: " + score, 10, BOARD_HEIGHT * TILE_SIZE + 28);
 
-        // INTERFAZ GRÁFICA DE FIN DE PARTIDA INTEGRADA (DASHBOARD)
         if (mostraMenuFinGrafico) {
-            // Capa de oscurecimiento del fondo de juego
+            btnMusica.setVisible(false);
+            btnEfectos.setVisible(false);
+
             g2d.setColor(new Color(15, 15, 20, 220));
             g2d.fillRect(0, 0, getWidth(), getHeight());
 
-            // CORRECCIÓN DEL CONTENEDOR: 
-            // Escalamos la altura de la tarjeta a 330 para albergar holgadamente las filas espaciadas y la botonera
             int cardW = 270;
             int cardH = 330;
             int cardX = (getWidth() - cardW) / 2;
             int cardY = (BOARD_HEIGHT * TILE_SIZE - cardH) / 2;
 
-            // Sombra suave proyectada
             g2d.setColor(new Color(0, 0, 0, 140));
             g2d.fillRoundRect(cardX + 6, cardY + 6, cardW, cardH, 16, 16);
 
-            // Contenedor principal con degradado estético oscuro
             GradientPaint cardGrad = new GradientPaint(cardX, cardY, new Color(35, 30, 30), cardX, cardY + cardH, new Color(20, 18, 18));
             g2d.setPaint(cardGrad);
             g2d.fillRoundRect(cardX, cardY, cardW, cardH, 16, 16);
@@ -331,7 +475,6 @@ public class TetrisGame extends JPanel implements ActionListener {
             Color accentColor = new Color(255, 75, 75);
             String headerText = "FIN DE LA PARTIDA";
 
-            // Borde exterior perimetral de neón iluminado
             g2d.setColor(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 160));
             g2d.setStroke(new BasicStroke(2f));
             g2d.drawRoundRect(cardX, cardY, cardW, cardH, 16, 16);
@@ -339,7 +482,6 @@ public class TetrisGame extends JPanel implements ActionListener {
 
             FontMetrics fm;
 
-            // TÍTULO: Texto con efecto de resplandor (Glow)
             g2d.setFont(new Font("Segoe UI", Font.BOLD, 22));
             fm = g2d.getFontMetrics();
             int titleX = cardX + (cardW - fm.stringWidth(headerText)) / 2;
@@ -351,27 +493,29 @@ public class TetrisGame extends JPanel implements ActionListener {
             g2d.setColor(accentColor);
             g2d.drawString(headerText, titleX, cardY + 50);
 
-            // Divisor geométrico horizontal
             g2d.setColor(new Color(0, 255, 255, 60));
             g2d.drawLine(cardX + 25, cardY + 80, cardX + cardW - 25, cardY + 80);
 
-            // DATOS DE RENDIMIENTO DISTRIBUIDOS SIMÉTRICAMENTE
             g2d.setFont(new Font("Monospaced", Font.BOLD, 14));
             fm = g2d.getFontMetrics();
 
-            // Línea 1: Puntos finales en la zona alta de datos (Y = 135)
             g2d.setColor(Color.CYAN);
             g2d.drawString("PUNTOS:", cardX + 30, cardY + 135);
             g2d.setColor(Color.WHITE);
             String scoreStr = score + " PTS";
             g2d.drawString(scoreStr, cardX + cardW - 30 - fm.stringWidth(scoreStr), cardY + 135);
 
-            // Línea 2: Nombre de Usuario colocado perfectamente en el espacio intermedio (Y = 195)
             g2d.setColor(Color.CYAN);
             g2d.drawString("USUARIO:", cardX + 30, cardY + 195);
             g2d.setColor(Color.WHITE);
             String opName = (jugadorActual != null) ? jugadorActual.getUsername().toUpperCase() : "INVITADO";
             g2d.drawString(opName, cardX + cardW - 30 - fm.stringWidth(opName), cardY + 195);
+        } else {
+            // Impedimos que los botones asomen de fondo en la pantalla de carga
+            if (!mostrarControles) {
+                btnMusica.setVisible(true);
+                btnEfectos.setVisible(true);
+            }
         }
     }
 
@@ -392,11 +536,11 @@ public class TetrisGame extends JPanel implements ActionListener {
         g.drawLine(x + TILE_SIZE - 1, y + TILE_SIZE - 1, x + TILE_SIZE - 1, y + 1);
     }
 
-    // --- MÉTODO PARA DETENER EL TIMER AL CERRAR ---
     public void detenerJuego() {
+        if (timerParpadeo != null) timerParpadeo.stop();
         if (timer != null) {
             timer.stop();
-            stopMusica(); // Aprovechamos para apagar la música también
+            stopMusica(); 
         }
     }
 

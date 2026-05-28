@@ -6,104 +6,158 @@ import java.util.ArrayList;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.JFrame;
+import javax.swing.Timer;
+import javax.swing.JButton; 
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import java.io.File;
+import javax.swing.ImageIcon; 
 
 import com.retro.main.model.Usuario;
 import com.retro.main.repository.UsuarioRepository;
 
-/*
- Declaras la clase SnakeGame. Al usar extends JPanel, 
- significa que esta clase es un panel de dibujo. No es una ventana entera, 
- sino el lienzo que se incrusta dentro del JFrame que lanza el menú principal.
- */
-public class SnakeGame extends JPanel {
-	// El identificador único de versión para la serialización de la clase, requerido por Java al heredar de un componente visual.
+public class SnakeGame extends JPanel implements ActionListener {
     private static final long serialVersionUID = 1L;
 
-    // Define el tamaño en píxeles de cada "casilla" o cuadrado del juego (la cabeza, el cuerpo, las manzanas y las paredes miden $25 \times 25$ píxeles).
     private final int TILE_SIZE = 25;
-    // El ancho total de la pantalla del juego en píxeles ($32 \text{ casillas} \times 25 \text{ píxeles} = 800$).
     private final int WIDTH = 800; 
-    // El alto total de la pantalla en píxeles ($25 \text{ casillas} \times 25 \text{ píxeles} = 625$, aunque jugables son 23 filas).
     private final int HEIGHT = 625; 
-    // El número de casillas horizontales que componen la rejilla del juego.
     private final int GRID_WIDTH = 32;
-    // El número de casillas verticales que componen la rejilla del juego.
     private final int GRID_HEIGHT = 23;
 
-    // Un ArrayList que almacena objetos Point (coordenadas $X, Y$). 
-    // Cada punto es una parte del cuerpo de la serpiente. 
-    // La posición 0 es la cabeza y las siguientes son la cola.
     private final ArrayList<Point> snake = new ArrayList<>();
-    // Lista de coordenadas donde están las manzanas que la serpiente debe comer en el nivel actual.
     private final ArrayList<Point> applesInLevel = new ArrayList<>();
-    // Lista de coordenadas de los enemigos o fantasmas que se mueven por el mapa para intentar matarte.
     private final ArrayList<Point> enemies = new ArrayList<>();
-    // Línea clave (Matriz bidimensional). Es el mapa o laberinto del juego. Si maze[y][x] vale 1, 
-    // significa que en esa casilla hay una pared indestructible; si vale 0, está vacía.
     private int[][] maze = new int[GRID_HEIGHT][GRID_WIDTH];
     
-    // Variable entera que almacena el nivel actual en el que se encuentra el jugador.
     private int currentLevel = 1;
-    // Bandera que indica si el bucle del juego está activo (movimiento de la serpiente, físicas). Si es false, el juego está en pausa o has muerto.
     private boolean running = false;
-    // Se vuelve true cuando te comes todas las manzanas de la pantalla, indicando que has superado el nivel actual.
     private boolean levelCleared = false;
-    // Se vuelve true cuando superas el último nivel del juego, activando la pantalla de victoria final.
     private boolean gameFinished = false;
 
-    // Guarda el milisegundo exacto en el que el jugador realiza el primer movimiento de la partida.
     private long startTime;
-    // Controla si el cronómetro ya está en marcha para evitar reiniciarlo cada vez que pulsas una tecla de dirección.
     private boolean timerStarted = false;
-    // Almacena el tiempo total que ha tardado el jugador en pasarse el juego. Este valor es el que luego lee el menú principal para transformarlo en puntuación.
     private int tiempoFinalSegundos = 0;
 
-    // El objeto que contiene la información del usuario de la sesión actual (se le pasa desde el menú principal).
     private Usuario jugadorActual;
-    // El repositorio inyectado de Spring. Permite que el juego guarde datos en las tablas SQL directamente si fuera necesario.
     private UsuarioRepository repo;
 
-    // Objeto de la librería de audio de Java (javax.sound.sampled). Almacena y reproduce el archivo de sonido de la música retro en bucle mientras juegas.
     private Clip musicaFondo;
+    private boolean musicaActivada = true; 
+    private boolean efectosActivados = true; 
 
-    // Usuario jugador: Recibe como parámetro el objeto con los datos del jugador actual que tiene la sesión iniciada en el menú.
-   // Recibe la referencia del repositorio de Spring Boot para poder interactuar con la base de datos SQL.
+    private JButton btnMusica;
+    private JButton btnEfectos;
+
+    private Timer gameLoopTimer;
+    private int currentDirection = KeyEvent.VK_RIGHT;
+
+    // VARIABLES EXCLUSIVAS PARA LA PANTALLA DE CONTROLES
+    private boolean mostrarControles = true;
+    private Image imgControles;
+    private Timer timerParpadeo;
+    private boolean textoVisible = true;
+
     public SnakeGame(Usuario jugador, UsuarioRepository repo) {
-    	// Guarda el objeto del jugador recibido en la variable global jugadorActual de esta clase. De este modo, 
-    	// el juego sabe en todo momento quién está jugando (para mirar si tiene el modo oscuro, su nombre, etc.).
         this.jugadorActual = jugador;
-        // Almacena la referencia del repositorio de la base de datos en la variable local repo para poder usar las funciones de guardado más adelante.
         this.repo = repo;
-        // Establece el tamaño preferido del panel de juego utilizando las constantes que vimos en la cabecera ($800 \times 625$ píxeles).
-        // Cuando en el menú principal ejecutas la instrucción v.pack(), 
-        // la ventana se encoge o estira hasta clavarse exactamente en estas dimensiones.
+        
+        this.setLayout(null);
         this.setPreferredSize(new Dimension(WIDTH, HEIGHT));
-        // Aplica un color de fondo al lienzo del juego. Es un tono azul/gris espacial muy oscuro (casi negro)
         this.setBackground(new Color(15, 15, 20)); 
-        // Activa la capacidad de que este panel reciba el "foco". En Java, si un panel no es focusable, 
-        // ignorará por completo todo lo que teclees, 
-        // haciendo imposible controlar a la serpiente.
         this.setFocusable(true);
-        // Enlaza el panel con un "escuchador" de teclado personalizado (MyKeyAdapter).
-        // A partir de esta línea, cada vez que el usuario pulse una flecha de dirección o las teclas WASD, 
-        // el juego capturará el evento para desviar la trayectoria de la serpiente.
         this.addKeyListener(new MyKeyAdapter());
         
-        // Invoca al método interno encargado de construir el escenario del Nivel 1.
-        // Esta función se ocupa de limpiar la pantalla, drawing las paredes del primer laberinto, 
-        // posicionar a la serpiente en su casilla de salida y esparcir las manzanas correspondientes.
-        loadLevel(1);
+        // Cargar la guía de controles desde la carpeta res
+        File fileImg = new File("res/snakeControles.png");
+        if (!fileImg.exists()) {
+            // Reintento alternativo si estuviera en .jpg
+            fileImg = new File("res/snakeControles.jpg");
+        }
+        if (fileImg.exists()) {
+            imgControles = new ImageIcon(fileImg.getAbsolutePath()).getImage();
+        }
+
+        // Timer para el parpadeo del mensaje inferior
+        timerParpadeo = new Timer(500, e -> {
+            textoVisible = !textoVisible;
+            repaint();
+        });
+        timerParpadeo.start();
+
+        // --- BOTÓN 1: MÚSICA DE FONDO ---
+        btnMusica = new JButton("MÚSICA: ON");
+        btnMusica.setBounds(530, 585, 110, 30);
+        btnMusica.setFont(new Font("Consolas", Font.BOLD, 12));
+        btnMusica.setBackground(new Color(30, 30, 45));
+        btnMusica.setForeground(Color.CYAN);
+        btnMusica.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 1));
+        btnMusica.setFocusable(false); 
+        btnMusica.setVisible(false); 
+        
+        btnMusica.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                musicaActivada = !musicaActivada;
+                if (musicaActivada) {
+                    btnMusica.setText("MÚSICA: ON");
+                    btnMusica.setForeground(Color.CYAN);
+                    btnMusica.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 1));
+                    playMusicaFondo();
+                } else {
+                    btnMusica.setText("MÚSICA: OFF");
+                    btnMusica.setForeground(Color.LIGHT_GRAY);
+                    btnMusica.setBorder(javax.swing.BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+                    stopMusicaFondo();
+                }
+                repaint();
+                requestFocusInWindow();
+            }
+        });
+        this.add(btnMusica);
+
+        // --- BOTÓN 2: EFECTOS DE SONIDO ---
+        btnEfectos = new JButton("EFECTOS: ON");
+        btnEfectos.setBounds(650, 585, 110, 30);
+        btnEfectos.setFont(new Font("Consolas", Font.BOLD, 12));
+        btnEfectos.setBackground(new Color(30, 30, 45));
+        btnEfectos.setForeground(Color.CYAN);
+        btnEfectos.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 1));
+        btnEfectos.setFocusable(false); 
+        btnEfectos.setVisible(false); 
+        
+        btnEfectos.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                efectosActivados = !efectosActivados;
+                if (efectosActivados) {
+                    btnEfectos.setText("EFECTOS: ON");
+                    btnEfectos.setForeground(Color.CYAN);
+                    btnEfectos.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 1));
+                } else {
+                    btnEfectos.setText("EFECTOS: OFF");
+                    btnEfectos.setForeground(Color.LIGHT_GRAY);
+                    btnEfectos.setBorder(javax.swing.BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
+                }
+                repaint();
+                requestFocusInWindow();
+            }
+        });
+        this.add(btnEfectos);
+
+        gameLoopTimer = new Timer(140, this);
+
+        SwingUtilities.invokeLater(() -> repaint());
     }
 
     private void playMusicaFondo() {
+        if (!musicaActivada || mostrarControles) return; 
         try {
             if (musicaFondo != null) {
-                musicaFondo.stop();
-                musicaFondo.setFramePosition(0); 
+                if (!musicaFondo.isRunning()) {
+                    musicaFondo.start();
+                }
             } else {
                 File musicPath = new File("res/musica_fondo.wav");
                 if (musicPath.exists()) {
@@ -111,9 +165,9 @@ public class SnakeGame extends JPanel {
                     musicaFondo = AudioSystem.getClip();
                     musicaFondo.open(audioInput);
                     musicaFondo.loop(Clip.LOOP_CONTINUOUSLY);
+                    musicaFondo.start();
                 }
             }
-            if (musicaFondo != null) musicaFondo.start();
         } catch (Exception e) {
             System.err.println("Error música: " + e.getMessage());
         }
@@ -125,13 +179,13 @@ public class SnakeGame extends JPanel {
         }
     }
 
-    // MÉTODO PARA DETENER TODO DESDE EL MENÚ
     public void pararMusica() {
         stopMusicaFondo();
         if (musicaFondo != null) musicaFondo.close();
     }
 
     private void playSonidoEfecto(String archivo) {
+        if (!efectosActivados || mostrarControles) return; 
         try {
             File soundPath = new File("res/" + archivo);
             if (soundPath.exists()) {
@@ -154,7 +208,11 @@ public class SnakeGame extends JPanel {
         this.running = true;
         this.levelCleared = false;
         this.gameFinished = false;
+        this.currentDirection = KeyEvent.VK_RIGHT; 
         
+        if (musicaFondo != null) {
+            musicaFondo.setFramePosition(0); 
+        }
         playMusicaFondo();
 
         if (level == 1) {
@@ -165,8 +223,14 @@ public class SnakeGame extends JPanel {
         snake.clear();
         applesInLevel.clear();
         enemies.clear();
+        
+        snake.add(new Point(TILE_SIZE * 4, TILE_SIZE * 2)); 
+        snake.add(new Point(TILE_SIZE * 3, TILE_SIZE * 2)); 
         snake.add(new Point(TILE_SIZE * 2, TILE_SIZE * 2)); 
+        
         generateMapData(level);
+        
+        gameLoopTimer.start();
         repaint();
     }
 
@@ -181,34 +245,68 @@ public class SnakeGame extends JPanel {
         for (int y = 0; y < GRID_HEIGHT; y++) {
             for (int x = 0; x < GRID_WIDTH; x++) maze[y][x] = 0;
         }
+        
         for (int x = 0; x < 32; x++) { setTile(x, 0, 1); setTile(x, 22, 1); }
         for (int y = 0; y < 23; y++) { setTile(0, y, 1); setTile(31, y, 1); }
 
         if (level == 1) {
-            for (int x = 8; x < 25; x += 4) setTile(x, 11, 2);
+            for (int y = 4; y < 9; y++) { setTile(8, y, 1); setTile(23, y + 10, 1); }
         } else if (level == 2) {
-            for (int y = 5; y < 18; y++) { setTile(10, y, 1); setTile(21, y, 1); }
-            setTile(5, 5, 2); setTile(26, 17, 2); setTile(15, 11, 2);
+            for (int y = 3; y < 12; y++) { setTile(8, y, 1); setTile(23, y + 7, 1); }
+            for (int y = 10; y < 19; y++) { setTile(14, y, 1); setTile(17, y - 6, 1); }
         } else if (level == 3) {
-            for (int x = 4; x < 28; x += 4) {
-                for (int y = 3; y < 20; y++) { if (y != 11) setTile(x, y, 1); }
+            for (int x = 4; x < 28; x++) {
+                if (x % 4 == 0) {
+                    for (int y = 3; y < 14; y++) setTile(x, y, 1);
+                } else if (x % 4 == 2) {
+                    for (int y = 9; y < 20; y++) setTile(x, y, 1);
+                }
             }
-            for (int x = 6; x < 30; x += 8) setTile(x, 11, 2);
-            setTile(16, 11, 3);
         } else if (level == 4) {
-            for (int x = 6; x < 26; x += 4) {
-                setTile(x, 5, 1); setTile(x, 6, 1); setTile(x, 16, 1); setTile(x, 17, 1);
-                setTile(x, 11, 2);
-            }
-            setTile(16, 5, 3); setTile(16, 17, 3);
+            for (int x = 5; x <= 12; x++) { setTile(x, 5, 1); setTile(x, 17, 1); setTile(x + 14, 5, 1); setTile(x + 14, 17, 1); }
+            for (int y = 6; y <= 10; y++) { setTile(5, y, 1); setTile(12, y, 1); setTile(19, y, 1); setTile(26, y, 1); }
+            for (int y = 12; y <= 16; y++) { setTile(5, y, 1); setTile(12, y, 1); setTile(19, y, 1); setTile(26, y, 1); }
         } else if (level == 5) {
-            for (int x = 5; x < 27; x += 5) {
-                for (int y = 2; y < 21; y++) { if (y != 6 && y != 16) setTile(x, y, 1); }
+            for (int x = 3; x < 29; x += 3) {
+                for (int y = 2; y < 21; y += 3) {
+                    setTile(x, y, 1); setTile(x + 1, y, 1);
+                }
             }
-            setTile(2, 20, 2); setTile(29, 2, 2);
-            for (int x = 7; x < 25; x += 5) {
-                setTile(x, 6, 2); setTile(x, 16, 2); setTile(x, 11, 3);
+            for (int x = 12; x < 20; x++) setTile(x, 11, 1);
+        }
+
+        int[][] manzanasProvisionales; 
+        if (level == 1) {
+            manzanasProvisionales = new int[][]{{5,5}, {10,18}, {15,11}, {20,4}, {25,15}, {12,7}, {18,14}, {7,12}, {27,8}, {14,19}};
+        } else if (level == 2) {
+            manzanasProvisionales = new int[][]{{3,4}, {5,17}, {11,6}, {12,15}, {15,3}, {16,18}, {19,7}, {20,14}, {26,5}, {28,16}, {9,20}, {22,2}};
+        } else if (level == 3) {
+            manzanasProvisionales = new int[][]{{2,5}, {6,5}, {10,5}, {14,5}, {18,5}, {22,5}, {26,5}, {30,5}, {2,17}, {6,17}, {10,17}, {14,17}, {18,17}, {26,17}};
+        } else if (level == 4) {
+            manzanasProvisionales = new int[][]{{2,2}, {3,20}, {7,2}, {9,20}, {15,2}, {16,20}, {21,2}, {23,20}, {29,2}, {30,20}, {1,11}, {14,11}, {17,11}, {30,11}, {15,8}, {16,14}};
+        } else { 
+            manzanasProvisionales = new int[][]{{1,3}, {2,3}, {5,3}, {8,3}, {11,3}, {14,3}, {17,3}, {20,3}, {23,3}, {26,3}, {29,3}, {30,3}, {5,9}, {11,9}, {17,9}, {23,9}, {29,9}, {2,15}, {8,15}, {20,15}};
+        }
+
+        for (int[] m : manzanasProvisionales) {
+            int mx = m[0];
+            int my = m[1];
+            while (maze[my][mx] == 1) {
+                mx = (mx + 1) % (GRID_WIDTH - 2) + 1; 
             }
+            setTile(mx, my, 2);
+        }
+
+        if (level == 1) {
+            setTile(16, 11, 3);
+        } else if (level == 2) {
+            setTile(11, 11, 3); setTile(20, 11, 3);
+        } else if (level == 3) {
+            setTile(2, 11, 3); setTile(15, 6, 3); setTile(29, 11, 3);
+        } else if (level == 4) {
+            setTile(2, 11, 3); setTile(14, 8, 3); setTile(17, 14, 3); setTile(29, 11, 3);
+        } else if (level == 5) {
+            setTile(2, 1, 3); setTile(29, 1, 3); setTile(14, 6, 3); setTile(17, 15, 3); setTile(29, 21, 3);
         }
     }
 
@@ -218,6 +316,53 @@ public class SnakeGame extends JPanel {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+        // --- PANTALLA DE CONTROLES PROPORCIONAL DE ALTA CALIDAD ---
+        if (mostrarControles) {
+            int panelW = getWidth();
+            int panelH = getHeight();
+            
+            g2d.setColor(new Color(15, 15, 18));
+            g2d.fillRect(0, 0, panelW, panelH);
+
+            if (imgControles != null) {
+                int imgW = imgControles.getWidth(this);
+                int imgH = imgControles.getHeight(this);
+                
+                int maxW = panelW - 80;
+                int maxH = panelH - 140;
+                
+                double scale = Math.min((double) maxW / imgW, (double) maxH / imgH);
+                
+                int targetW = (int) (imgW * scale);
+                int targetH = (int) (imgH * scale);
+                
+                int renderX = (panelW - targetW) / 2;
+                int renderY = (panelH - targetH) / 2 - 20;
+                
+                g2d.drawImage(imgControles, renderX, renderY, targetW, targetH, this);
+                
+                g2d.setColor(new Color(0, 255, 255, 80));
+                g2d.setStroke(new BasicStroke(1.5f));
+                g2d.drawRect(renderX - 2, renderY - 2, targetW + 4, targetH + 4);
+                g2d.setStroke(new BasicStroke(1f));
+            } else {
+                g2d.setColor(Color.CYAN);
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 24));
+                g2d.drawString("GUÍA DE CONTROLES", 50, 150);
+            }
+
+            if (textoVisible) {
+                g2d.setFont(new Font("Consolas", Font.BOLD, 15));
+                g2d.setColor(Color.GREEN);
+                FontMetrics fm = g2d.getFontMetrics();
+                String msgInicio = "PULSA CUALQUIER TECLA PARA EMPEZAR";
+                int xMsg = (panelW - fm.stringWidth(msgInicio)) / 2;
+                g2d.drawString(msgInicio, xMsg, panelH - 55);
+            }
+            return; 
+        }
+
+        // REJILLA DEL JUEGO
         g2d.setColor(new Color(25, 25, 35));
         for(int i=0; i<WIDTH; i+=TILE_SIZE) g2d.drawLine(i, 0, i, 575);
         for(int i=0; i<575; i+=TILE_SIZE) g2d.drawLine(0, i, WIDTH, i);
@@ -276,59 +421,62 @@ public class SnakeGame extends JPanel {
         g2d.drawString("NIVEL: " + currentLevel, 30, 608);
         g2d.drawString("RESTAN: " + applesInLevel.size(), 180, 608);
 
-        if (gameFinished) drawFinalOverlay(g2d);
-        else if (levelCleared) drawOverlay(g2d, "¡NIVEL " + currentLevel + " COMPLETADO!", "Presiona 'N' para el siguiente nivel", Color.GREEN);
-        else if (!running) drawOverlay(g2d, "FIN DEL JUEGO", "Presiona 'R' para reintentar", Color.RED);
+        if (gameFinished) {
+            btnMusica.setVisible(false); 
+            btnEfectos.setVisible(false); 
+            drawFinalOverlay(g2d);
+        } else if (levelCleared) {
+            btnMusica.setVisible(false);
+            btnEfectos.setVisible(false);
+            drawOverlay(g2d, "¡NIVEL " + currentLevel + " COMPLETADO!", "Presiona 'N' para el siguiente nivel", Color.GREEN);
+        } else if (!running) {
+            btnMusica.setVisible(false);
+            btnEfectos.setVisible(false);
+            drawOverlay(g2d, "FIN DEL JUEGO", "Presiona 'R' para reintentar", Color.RED);
+        } else {
+            btnMusica.setVisible(true); 
+            btnEfectos.setVisible(true); 
+        }
     }
 
     private void drawOverlay(Graphics2D g2d, String title, String subtitle, Color mainColor) {
-        // Fondo oscurecido total de ambiente
         g2d.setColor(new Color(10, 10, 15, 230));
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
-        // Caja de interfaz central estilizada
         int panelW = 560;
         int panelH = 260;
         int panelX = (WIDTH - panelW) / 2;
         int panelY = (HEIGHT - panelH) / 2 - 20;
 
-        // Sombra de la caja central
         g2d.setColor(new Color(0, 0, 0, 150));
         g2d.fillRoundRect(panelX + 8, panelY + 8, panelW, panelH, 20, 20);
 
-        // Fondo degradado del panel
         GradientPaint panelGrad = new GradientPaint(panelX, panelY, new Color(25, 25, 35), panelX, panelY + panelH, new Color(15, 15, 20));
         g2d.setPaint(panelGrad);
         g2d.fillRoundRect(panelX, panelY, panelW, panelH, 20, 20);
 
-        // Marco exterior brillante de estilo neón del color principal
         g2d.setColor(new Color(mainColor.getRed(), mainColor.getGreen(), mainColor.getBlue(), 180));
         g2d.setStroke(new BasicStroke(2f));
         g2d.drawRoundRect(panelX, panelY, panelW, panelH, 20, 20);
-        g2d.setStroke(new BasicStroke(1f)); // Restaurar grosor de línea base
+        g2d.setStroke(new BasicStroke(1f));
 
         FontMetrics fm;
-
-        // TEXTO PRINCIPAL: EFECTO GLOW (Brillo Retro)
         g2d.setFont(new Font("Segoe UI", Font.BOLD, 38));
         fm = g2d.getFontMetrics();
         int titleX = panelX + (panelW - fm.stringWidth(title)) / 2;
         
-        // Dibujo de brillo difuminado detrás del texto
         g2d.setColor(new Color(mainColor.getRed(), mainColor.getGreen(), mainColor.getBlue(), 60));
         g2d.drawString(title, titleX - 2, panelY + 92);
         g2d.drawString(title, titleX + 2, panelY + 92);
         g2d.drawString(title, titleX, panelY + 90 - 2);
         g2d.drawString(title, titleX, panelY + 90 + 2);
-        // Texto frontal definitivo
+
         g2d.setColor(mainColor);
         g2d.drawString(title, titleX, panelY + 90);
 
-        // Separador horizontal neón sutil
         g2d.setColor(new Color(mainColor.getRed(), mainColor.getGreen(), mainColor.getBlue(), 100));
         g2d.drawLine(panelX + 40, panelY + 130, panelX + panelW - 40, panelY + 130);
 
-        // Subtítulo centrado
         g2d.setColor(Color.WHITE);
         g2d.setFont(new Font("Consolas", Font.PLAIN, 20));
         fm = g2d.getFontMetrics();
@@ -336,102 +484,102 @@ public class SnakeGame extends JPanel {
     }
 
     private void drawFinalOverlay(Graphics2D g2d) {
-        // Fondo oscurecido total de ambiente
         g2d.setColor(new Color(10, 10, 15, 230));
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
-        // Caja de interfaz central estilizada (Dashboard de Victoria)
         int panelW = 560;
         int panelH = 360;
         int panelX = (WIDTH - panelW) / 2;
         int panelY = (HEIGHT - panelH) / 2 - 20;
 
-        // Sombra de la caja central
         g2d.setColor(new Color(0, 0, 0, 150));
         g2d.fillRoundRect(panelX + 8, panelY + 8, panelW, panelH, 20, 20);
 
-        // Fondo degradado del panel de estadísticas
         GradientPaint panelGrad = new GradientPaint(panelX, panelY, new Color(25, 25, 35), panelX, panelY + panelH, new Color(15, 15, 20));
         g2d.setPaint(panelGrad);
         g2d.fillRoundRect(panelX, panelY, panelW, panelH, 20, 20);
 
-        // Marco exterior brillante de estilo neón dorado
         g2d.setColor(new Color(255, 215, 0, 180));
         g2d.setStroke(new BasicStroke(2f));
         g2d.drawRoundRect(panelX, panelY, panelW, panelH, 20, 20);
-        g2d.setStroke(new BasicStroke(1f)); // Restaurar grosor de línea base
+        g2d.setStroke(new BasicStroke(1f));
 
         FontMetrics fm;
-
-        // TEXTO PRINCIPAL: EFECTO GLOW (Brillo Retro)
         String titleText = "MISIÓN CUMPLIDA";
         g2d.setFont(new Font("Segoe UI", Font.BOLD, 38));
         fm = g2d.getFontMetrics();
         int titleX = panelX + (panelW - fm.stringWidth(titleText)) / 2;
         
-        // Dibujo de brillo difuminado detrás del texto
         g2d.setColor(new Color(255, 215, 0, 60));
         g2d.drawString(titleText, titleX - 2, panelY + 62);
         g2d.drawString(titleText, titleX + 2, panelY + 62);
         g2d.drawString(titleText, titleX, panelY + 60 - 2);
         g2d.drawString(titleText, titleX, panelY + 60 + 2);
-        // Texto frontal definitivo
+
         g2d.setColor(new Color(255, 215, 0));
         g2d.drawString(titleText, titleX, panelY + 60);
 
-        // Separador horizontal neón dorado sutil
         g2d.setColor(new Color(255, 215, 0, 100));
         g2d.drawLine(panelX + 40, panelY + 90, panelX + panelW - 40, panelY + 90);
 
-        // PANEL DE ESTADÍSTICAS DEL TFG
         g2d.setFont(new Font("Monospaced", Font.BOLD, 18));
         fm = g2d.getFontMetrics();
         
-        // Fila 1: Jugador
         String userStr = jugadorActual != null ? jugadorActual.getUsername().toUpperCase() : "INVITADO";
         g2d.setColor(Color.CYAN);
         g2d.drawString("OPERADOR:", panelX + 60, panelY + 140);
         g2d.setColor(Color.WHITE);
         g2d.drawString(userStr, panelX + panelW - 60 - fm.stringWidth(userStr), panelY + 140);
 
-        // Fila 2: Tiempo Record
         String timeStr = tiempoFinalSegundos + " SEGUNDOS";
         g2d.setColor(Color.CYAN);
         g2d.drawString("TIEMPO RÉCORD:", panelX + 60, panelY + 180);
         g2d.setColor(Color.WHITE);
         g2d.drawString(timeStr, panelX + panelW - 60 - fm.stringWidth(timeStr), panelY + 180);
 
-        // Fila 3: Autores del Software
         String authStr = "JORGE & VICTOR";
         g2d.setColor(Color.CYAN);
         g2d.drawString("DESARROLLADORES:", panelX + 60, panelY + 220);
         g2d.setColor(new Color(150, 150, 150));
         g2d.drawString(authStr, panelX + panelW - 60 - fm.stringWidth(authStr), panelY + 220);
 
-        // Separador horizontal inferior sutil
         g2d.setColor(new Color(255, 215, 0, 40));
         g2d.drawLine(panelX + 40, panelY + 250, panelX + panelW - 40, panelY + 250);
 
-        // BOTONES DE CONTROL DE INTERFAZ (Controles de consola)
         g2d.setFont(new Font("Consolas", Font.BOLD, 14));
         fm = g2d.getFontMetrics();
         
-        String prompt1 = "[M] VOLVER AL MENÚ OS";
+        String prompt1 = "[C] VOLVER AL MENÚ OS";
         String prompt2 = "[R] REINICIAR JUEGO";
         String prompt3 = "[V] REINICIAR A NIVEL 1";
         
         int spacing = panelW / 3;
-        g2d.setColor(new Color(255, 80, 80)); // Rojo retro para salir
+        g2d.setColor(new Color(255, 80, 80)); 
         g2d.drawString(prompt1, panelX + (spacing - fm.stringWidth(prompt1))/2 + 5, panelY + 295);
         
-        g2d.setColor(Color.GREEN); // Verde para reintentar nivel
+        g2d.setColor(Color.GREEN); 
         g2d.drawString(prompt2, panelX + spacing + (spacing - fm.stringWidth(prompt2))/2, panelY + 295);
         
-        g2d.setColor(Color.YELLOW); // Dorado/Amarillo para empezar de cero
+        g2d.setColor(Color.YELLOW); 
         g2d.drawString(prompt3, panelX + spacing*2 + (spacing - fm.stringWidth(prompt3))/2 - 5, panelY + 295);
     }
 
-    private void manualMove(int dx, int dy) {
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (running && !levelCleared && !gameFinished) {
+            int dx = 0;
+            int dy = 0;
+
+            if (currentDirection == KeyEvent.VK_UP) dy = -TILE_SIZE;
+            else if (currentDirection == KeyEvent.VK_DOWN) dy = TILE_SIZE;
+            else if (currentDirection == KeyEvent.VK_LEFT) dx = -TILE_SIZE;
+            else if (currentDirection == KeyEvent.VK_RIGHT) dx = TILE_SIZE;
+
+            autoMove(dx, dy);
+        }
+    }
+
+    private void autoMove(int dx, int dy) {
         if (!running || levelCleared || gameFinished) return;
 
         if (!timerStarted && currentLevel == 1) {
@@ -463,6 +611,7 @@ public class SnakeGame extends JPanel {
                     
                     if (currentLevel == 5) {
                         gameFinished = true;
+                        gameLoopTimer.stop();
                         long endTime = System.currentTimeMillis();
                         tiempoFinalSegundos = (int) ((endTime - startTime) / 1000);
                         if (jugadorActual != null) {
@@ -471,6 +620,7 @@ public class SnakeGame extends JPanel {
                         }
                     } else {
                         levelCleared = true;
+                        gameLoopTimer.stop();
                     }
                 }
             } else { 
@@ -499,6 +649,7 @@ public class SnakeGame extends JPanel {
 
     private void morir(String sonidoCausa) {
         running = false;
+        gameLoopTimer.stop();
         stopMusicaFondo(); 
         playSonidoEfecto(sonidoCausa);   
         repaint();
@@ -510,8 +661,10 @@ public class SnakeGame extends JPanel {
             int nx = e.x, ny = e.y;
             if (dir == 0) ny -= TILE_SIZE; else if (dir == 1) ny += TILE_SIZE;
             else if (dir == 2) nx -= TILE_SIZE; else nx += TILE_SIZE;
-            if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < 575 && maze[ny/TILE_SIZE][nx/TILE_SIZE] == 0) {
-                e.x = nx; e.y = ny;
+            if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < 575) {
+                if (maze[ny/TILE_SIZE][nx/TILE_SIZE] == 0) {
+                    e.x = nx; e.y = ny;
+                }
             }
         }
     }
@@ -520,8 +673,18 @@ public class SnakeGame extends JPanel {
         @Override
         public void keyPressed(KeyEvent e) {
             int key = e.getKeyCode();
+            
+            if (mostrarControles) {
+                mostrarControles = false;
+                timerParpadeo.stop();
+                btnMusica.setVisible(true);
+                btnEfectos.setVisible(true);
+                loadLevel(1); 
+                return;
+            }
+
             if (gameFinished) {
-                if (key == KeyEvent.VK_M) {
+                if (key == KeyEvent.VK_C) { 
                     stopMusicaFondo();
                     JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(SnakeGame.this);
                     if(topFrame != null) topFrame.dispose();
@@ -534,10 +697,18 @@ public class SnakeGame extends JPanel {
             } else if (!running) {
                 if (key == KeyEvent.VK_R) loadLevel(currentLevel);
             } else {
-                if (key == KeyEvent.VK_UP) manualMove(0, -TILE_SIZE);
-                else if (key == KeyEvent.VK_DOWN) manualMove(0, TILE_SIZE);
-                else if (key == KeyEvent.VK_LEFT) manualMove(-TILE_SIZE, 0);
-                else if (key == KeyEvent.VK_RIGHT) manualMove(TILE_SIZE, 0);
+                if ((key == KeyEvent.VK_UP || key == KeyEvent.VK_W) && currentDirection != KeyEvent.VK_DOWN) {
+                    currentDirection = KeyEvent.VK_UP;
+                }
+                else if ((key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) && currentDirection != KeyEvent.VK_UP) {
+                    currentDirection = KeyEvent.VK_DOWN;
+                }
+                else if ((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) && currentDirection != KeyEvent.VK_RIGHT) {
+                    currentDirection = KeyEvent.VK_LEFT;
+                }
+                else if ((key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) && currentDirection != KeyEvent.VK_LEFT) {
+                    currentDirection = KeyEvent.VK_RIGHT;
+                }
             }
         }
     }
