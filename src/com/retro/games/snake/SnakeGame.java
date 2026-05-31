@@ -8,6 +8,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.JFrame;
 import javax.swing.Timer;
 import javax.swing.JButton; 
+import javax.swing.border.LineBorder;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -36,9 +37,12 @@ public class SnakeGame extends JPanel implements ActionListener {
     private boolean levelCleared = false;
     private boolean gameFinished = false;
 
+    // --- GESTIÓN DE TIEMPO BLINDADO ---
     private long startTime;
     private boolean timerStarted = false;
     private int tiempoFinalSegundos = 0;
+    private long instantePausa;            
+    private long tiempoPausadoAcumulado;   
 
     private Usuario jugadorActual;
     private UsuarioRepository repo;
@@ -50,6 +54,13 @@ public class SnakeGame extends JPanel implements ActionListener {
     private JButton btnMusica;
     private JButton btnEfectos;
 
+    // COMPONENTES EXCLUSIVOS DE PAUSA (SÓLO ADMIN)
+    private boolean juegoPausado = false;
+    private JButton btnPausaAdmin;
+    private JPanel panelPausaAdmin;
+    private JButton btnReanudarAdmin;
+    private JButton btnReiniciarNivelAdmin;
+
     private Timer gameLoopTimer;
     private int currentDirection = KeyEvent.VK_RIGHT;
 
@@ -58,6 +69,8 @@ public class SnakeGame extends JPanel implements ActionListener {
     private Image imgControles;
     private Timer timerParpadeo;
     private boolean textoVisible = true;
+
+    private boolean partidaAlteradaPorAdmin = false;
 
     public SnakeGame(Usuario jugador, UsuarioRepository repo) {
         this.jugadorActual = jugador;
@@ -69,17 +82,14 @@ public class SnakeGame extends JPanel implements ActionListener {
         this.setFocusable(true);
         this.addKeyListener(new MyKeyAdapter());
         
-        // Cargar la guía de controles desde la carpeta res
         File fileImg = new File("res/snakeControles.png");
         if (!fileImg.exists()) {
-            // Reintento alternativo si estuviera en .jpg
             fileImg = new File("res/snakeControles.jpg");
         }
         if (fileImg.exists()) {
             imgControles = new ImageIcon(fileImg.getAbsolutePath()).getImage();
         }
 
-        // Timer para el parpadeo del mensaje inferior
         timerParpadeo = new Timer(500, e -> {
             textoVisible = !textoVisible;
             repaint();
@@ -146,13 +156,122 @@ public class SnakeGame extends JPanel implements ActionListener {
         });
         this.add(btnEfectos);
 
-        gameLoopTimer = new Timer(140, this);
+        if (esAdministrador()) {
+            inicializarSistemaPausaAdmin();
+        }
 
+        gameLoopTimer = new Timer(140, this);
         SwingUtilities.invokeLater(() -> repaint());
     }
 
+    private boolean esAdministrador() {
+        return jugadorActual != null && "admin".equalsIgnoreCase(jugadorActual.getUsername());
+    }
+
+    private void inicializarSistemaPausaAdmin() {
+        btnPausaAdmin = new JButton("PAUSA");
+        btnPausaAdmin.setBounds(410, 585, 110, 30);
+        btnPausaAdmin.setFont(new Font("Consolas", Font.BOLD, 12));
+        btnPausaAdmin.setBackground(new Color(45, 20, 20));
+        btnPausaAdmin.setForeground(Color.YELLOW);
+        btnPausaAdmin.setBorder(javax.swing.BorderFactory.createLineBorder(Color.YELLOW, 1));
+        btnPausaAdmin.setFocusable(false);
+        btnPausaAdmin.setVisible(false);
+        btnPausaAdmin.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnPausaAdmin.addActionListener(e -> alternarPausaAdmin());
+        this.add(btnPausaAdmin);
+
+        panelPausaAdmin = new JPanel(new GridLayout(1, 2, 20, 0));
+        panelPausaAdmin.setOpaque(false);
+        panelPausaAdmin.setBounds((WIDTH - 440) / 2, ((HEIGHT - 260) / 2) + 110, 440, 40);
+        panelPausaAdmin.setVisible(false);
+
+        btnReanudarAdmin = new JButton("REANUDAR");
+        estilizarBotonPausa(btnReanudarAdmin, Color.GREEN);
+        btnReanudarAdmin.addActionListener(e -> alternarPausaAdmin());
+
+        btnReiniciarNivelAdmin = new JButton("REINICIAR NIVEL");
+        estilizarBotonPausa(btnReiniciarNivelAdmin, Color.ORANGE);
+        btnReiniciarNivelAdmin.addActionListener(e -> {
+            alternarPausaAdmin(); 
+            loadLevel(currentLevel); 
+        });
+
+        panelPausaAdmin.add(btnReanudarAdmin);
+        panelPausaAdmin.add(btnReiniciarNivelAdmin);
+        this.add(panelPausaAdmin);
+    }
+
+    private void estilizarBotonPausa(JButton b, Color accentColor) {
+        b.setBackground(new Color(35, 35, 45));
+        b.setForeground(Color.WHITE);
+        b.setFont(new Font("Consolas", Font.BOLD, 13));
+        b.setFocusable(false);
+        b.setFocusPainted(false);
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        b.setBorder(new LineBorder(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 120), 1));
+        
+        b.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { 
+                b.setBackground(new Color(48, 48, 60)); 
+                b.setBorder(new LineBorder(accentColor, 1));
+            }
+            public void mouseExited(MouseEvent e) { 
+                b.setBackground(new Color(35, 35, 45)); 
+                b.setBorder(new LineBorder(new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 120), 1));
+            }
+        });
+    }
+
+    private void alternarPausaAdmin() {
+        if (!esAdministrador() || !running || levelCleared || gameFinished) return;
+
+        juegoPausado = !juegoPausado;
+
+        if (juegoPausado) {
+            gameLoopTimer.stop();
+            stopMusicaFondo();
+            instantePausa = System.currentTimeMillis(); 
+            if (panelPausaAdmin != null) panelPausaAdmin.setVisible(true);
+        } else {
+            long duracionDeEstaPausa = System.currentTimeMillis() - instantePausa;
+            tiempoPausadoAcumulado += duracionDeEstaPausa; 
+            
+            if (panelPausaAdmin != null) panelPausaAdmin.setVisible(false);
+            playMusicaFondo();
+            gameLoopTimer.start();
+        }
+        repaint();
+        requestFocusInWindow(); 
+    }
+
+    private void forzarCompletarNivelAdmin() {
+        if (!esAdministrador() || !running || levelCleared || gameFinished || juegoPausado) return;
+
+        partidaAlteradaPorAdmin = true; 
+        stopMusicaFondo(); 
+        playSonidoEfecto("victoria.wav"); 
+        
+        if (currentLevel == 5) {
+            gameFinished = true;
+            gameLoopTimer.stop();
+            long endTime = System.currentTimeMillis();
+            
+            tiempoFinalSegundos = (int) (((endTime - startTime) - tiempoPausadoAcumulado) / 1000);
+            
+            if (jugadorActual != null) {
+                jugadorActual.setPuntos_snake(tiempoFinalSegundos);
+                repo.save(jugadorActual);
+            }
+        } else {
+            levelCleared = true;
+            gameLoopTimer.stop();
+        }
+        repaint();
+    }
+
     private void playMusicaFondo() {
-        if (!musicaActivada || mostrarControles) return; 
+        if (!musicaActivada || mostrarControles || juegoPausado) return; 
         try {
             if (musicaFondo != null) {
                 if (!musicaFondo.isRunning()) {
@@ -185,7 +304,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void playSonidoEfecto(String archivo) {
-        if (!efectosActivados || mostrarControles) return; 
+        if (!efectosActivados || mostrarControles || juegoPausado) return; 
         try {
             File soundPath = new File("res/" + archivo);
             if (soundPath.exists()) {
@@ -208,8 +327,11 @@ public class SnakeGame extends JPanel implements ActionListener {
         this.running = true;
         this.levelCleared = false;
         this.gameFinished = false;
+        this.juegoPausado = false;
         this.currentDirection = KeyEvent.VK_RIGHT; 
         
+        if (panelPausaAdmin != null) panelPausaAdmin.setVisible(false);
+
         if (musicaFondo != null) {
             musicaFondo.setFramePosition(0); 
         }
@@ -218,6 +340,13 @@ public class SnakeGame extends JPanel implements ActionListener {
         if (level == 1) {
             timerStarted = false;
             tiempoFinalSegundos = 0;
+            tiempoPausadoAcumulado = 0; 
+            partidaAlteradaPorAdmin = false; 
+            
+            if (jugadorActual != null) {
+                jugadorActual.setPuntos_snake(0);
+                repo.save(jugadorActual);
+            }
         }
 
         snake.clear();
@@ -316,7 +445,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // --- PANTALLA DE CONTROLES PROPORCIONAL DE ALTA CALIDAD ---
+        // GUÍA DE CONTROLES INICIAL
         if (mostrarControles) {
             int panelW = getWidth();
             int panelH = getHeight();
@@ -359,14 +488,23 @@ public class SnakeGame extends JPanel implements ActionListener {
                 int xMsg = (panelW - fm.stringWidth(msgInicio)) / 2;
                 g2d.drawString(msgInicio, xMsg, panelH - 55);
             }
+            
+            // CORRECCIÓN DE VISIBILIDAD DE COMPONENTES EN LA PANTALLA DE INICIO
+            if (panelPausaAdmin != null && panelPausaAdmin.isVisible()) {
+                panelPausaAdmin.setVisible(false);
+            }
+            if (btnPausaAdmin != null && btnPausaAdmin.isVisible()) {
+                btnPausaAdmin.setVisible(false);
+            }
             return; 
         }
 
-        // REJILLA DEL JUEGO
+        // REJILLA DEL MAPA RETRO
         g2d.setColor(new Color(25, 25, 35));
         for(int i=0; i<WIDTH; i+=TILE_SIZE) g2d.drawLine(i, 0, i, 575);
         for(int i=0; i<575; i+=TILE_SIZE) g2d.drawLine(0, i, WIDTH, i);
 
+        // MUROS
         for (int y = 0; y < GRID_HEIGHT; y++) {
             for (int x = 0; x < GRID_WIDTH; x++) {
                 if (maze[y][x] == 1) {
@@ -379,6 +517,7 @@ public class SnakeGame extends JPanel implements ActionListener {
             }
         }
 
+        // MANZANAS
         for (Point p : applesInLevel) {
             int x = p.x; int y = p.y;
             g2d.setColor(new Color(101, 67, 33)); g2d.fillRect(x + 11, y + 2, 3, 6);
@@ -389,6 +528,7 @@ public class SnakeGame extends JPanel implements ActionListener {
             g2d.setColor(new Color(255, 255, 255, 130)); g2d.fillOval(x + 7, y + 10, 5, 3);
         }
 
+        // FANTASMAS ENEMIGOS
         for (Point e : enemies) {
             g2d.setColor(new Color(255, 255, 0));
             g2d.fillArc(e.x + 3, e.y + 3, TILE_SIZE - 6, TILE_SIZE - 6, 0, 180);
@@ -397,6 +537,7 @@ public class SnakeGame extends JPanel implements ActionListener {
             g2d.fillOval(e.x + 7, e.y + 8, 4, 4); g2d.fillOval(e.x + 14, e.y + 8, 4, 4);
         }
 
+        // CUERPO DE LA SERPIENTE
         for (int i = snake.size() - 1; i >= 0; i--) {
             Point p = snake.get(i);
             if (i == 0) { 
@@ -412,6 +553,7 @@ public class SnakeGame extends JPanel implements ActionListener {
             }
         }
 
+        // HUD INFERIOR
         g2d.setPaint(new GradientPaint(0, 575, new Color(30, 30, 35), 0, HEIGHT, new Color(15, 15, 20)));
         g2d.fillRect(0, 575, WIDTH, 50);
         g2d.setColor(Color.CYAN); g2d.drawRect(0, 575, WIDTH-1, 49);
@@ -421,24 +563,82 @@ public class SnakeGame extends JPanel implements ActionListener {
         g2d.drawString("NIVEL: " + currentLevel, 30, 608);
         g2d.drawString("RESTAN: " + applesInLevel.size(), 180, 608);
 
+        if (esAdministrador() && !gameFinished) {
+            drawAdminHUD(g2d);
+        }
+
+        // MANEJADOR DE CAPAS DINÁMICAS
         if (gameFinished) {
-            btnMusica.setVisible(false); 
-            btnEfectos.setVisible(false); 
+            ocultarBotoneraInteractiva();
             drawFinalOverlay(g2d);
+        } else if (juegoPausado) {
+            drawOverlayPausaAdmin(g2d, "SESIÓN EN PAUSA", "Panel de Control de Depuración del Admin", Color.YELLOW);
         } else if (levelCleared) {
-            btnMusica.setVisible(false);
-            btnEfectos.setVisible(false);
+            ocultarBotoneraInteractiva();
             drawOverlay(g2d, "¡NIVEL " + currentLevel + " COMPLETADO!", "Presiona 'N' para el siguiente nivel", Color.GREEN);
         } else if (!running) {
-            btnMusica.setVisible(false);
-            btnEfectos.setVisible(false);
+            ocultarBotoneraInteractiva();
             drawOverlay(g2d, "FIN DEL JUEGO", "Presiona 'R' para reintentar", Color.RED);
         } else {
             btnMusica.setVisible(true); 
             btnEfectos.setVisible(true); 
+            if (esAdministrador()) btnPausaAdmin.setVisible(true);
         }
     }
 
+    private void drawAdminHUD(Graphics2D g2d) {
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2d.setFont(new Font("Consolas", Font.BOLD, 12));
+        g2d.setColor(Color.YELLOW);
+        g2d.drawString("BOTONES 1-5: Mapas", 295, 595);
+    }
+
+    private void ocultarBotoneraInteractiva() {
+        btnMusica.setVisible(false);
+        btnEfectos.setVisible(false);
+        if (btnPausaAdmin != null) btnPausaAdmin.setVisible(false);
+        if (panelPausaAdmin != null) panelPausaAdmin.setVisible(false);
+    }
+
+    private void drawOverlayPausaAdmin(Graphics2D g2d, String title, String subtitle, Color mainColor) {
+        g2d.setColor(new Color(10, 10, 15, 230));
+        g2d.fillRect(0, 0, WIDTH, HEIGHT);
+
+        int panelW = 560;
+        int panelH = 260;
+        int panelX = (WIDTH - panelW) / 2;
+        int panelY = (HEIGHT - panelH) / 2 - 20;
+
+        g2d.setColor(new Color(0, 0, 0, 150));
+        g2d.fillRoundRect(panelX + 8, panelY + 8, panelW, panelH, 20, 20);
+
+        GradientPaint panelGrad = new GradientPaint(panelX, panelY, new Color(25, 25, 35), panelX, panelY + panelH, new Color(15, 15, 20));
+        g2d.setPaint(panelGrad);
+        g2d.fillRoundRect(panelX, panelY, panelW, panelH, 20, 20);
+
+        g2d.setColor(new Color(mainColor.getRed(), mainColor.getGreen(), mainColor.getBlue(), 180));
+        g2d.setStroke(new BasicStroke(2f));
+        g2d.drawRoundRect(panelX, panelY, panelW, panelH, 20, 20);
+        g2d.setStroke(new BasicStroke(1f));
+
+        FontMetrics fm;
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 38));
+        fm = g2d.getFontMetrics();
+        int titleX = panelX + (panelW - fm.stringWidth(title)) / 2;
+        
+        g2d.setColor(mainColor);
+        g2d.drawString(title, titleX, panelY + 60);
+
+        g2d.setColor(new Color(mainColor.getRed(), mainColor.getGreen(), mainColor.getBlue(), 100));
+        g2d.drawLine(panelX + 40, panelY + 95, panelX + panelW - 40, panelY + 95);
+
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("Consolas", Font.PLAIN, 18));
+        fm = g2d.getFontMetrics();
+        g2d.drawString(subtitle, panelX + (panelW - fm.stringWidth(subtitle)) / 2, panelY + 215);
+    }
+
+    // --- CORRECCIÓN INTEGRAL DE RENDERIZADO DE TEXTO BORROSO/DUPLICADO ---
     private void drawOverlay(Graphics2D g2d, String title, String subtitle, Color mainColor) {
         g2d.setColor(new Color(10, 10, 15, 230));
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
@@ -465,12 +665,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         fm = g2d.getFontMetrics();
         int titleX = panelX + (panelW - fm.stringWidth(title)) / 2;
         
-        g2d.setColor(new Color(mainColor.getRed(), mainColor.getGreen(), mainColor.getBlue(), 60));
-        g2d.drawString(title, titleX - 2, panelY + 92);
-        g2d.drawString(title, titleX + 2, panelY + 92);
-        g2d.drawString(title, titleX, panelY + 90 - 2);
-        g2d.drawString(title, titleX, panelY + 90 + 2);
-
+        // PINTADO LIMPIO DIRECTO: Eliminado el bucle de sombras fantasma desfasadas que generaban el efecto doble
         g2d.setColor(mainColor);
         g2d.drawString(title, titleX, panelY + 90);
 
@@ -510,12 +705,6 @@ public class SnakeGame extends JPanel implements ActionListener {
         fm = g2d.getFontMetrics();
         int titleX = panelX + (panelW - fm.stringWidth(titleText)) / 2;
         
-        g2d.setColor(new Color(255, 215, 0, 60));
-        g2d.drawString(titleText, titleX - 2, panelY + 62);
-        g2d.drawString(titleText, titleX + 2, panelY + 62);
-        g2d.drawString(titleText, titleX, panelY + 60 - 2);
-        g2d.drawString(titleText, titleX, panelY + 60 + 2);
-
         g2d.setColor(new Color(255, 215, 0));
         g2d.drawString(titleText, titleX, panelY + 60);
 
@@ -531,8 +720,9 @@ public class SnakeGame extends JPanel implements ActionListener {
         g2d.setColor(Color.WHITE);
         g2d.drawString(userStr, panelX + panelW - 60 - fm.stringWidth(userStr), panelY + 140);
 
-        String timeStr = tiempoFinalSegundos + " SEGUNDOS";
-        g2d.setColor(Color.CYAN);
+        String timeStr = partidaAlteradaPorAdmin ? "MODO TEST (0s)" : tiempoFinalSegundos + " SEGUNDOS";
+        
+        g2d.setColor(new Color(255, 215, 0)); 
         g2d.drawString("TIEMPO RÉCORD:", panelX + 60, panelY + 180);
         g2d.setColor(Color.WHITE);
         g2d.drawString(timeStr, panelX + panelW - 60 - fm.stringWidth(timeStr), panelY + 180);
@@ -566,7 +756,7 @@ public class SnakeGame extends JPanel implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (running && !levelCleared && !gameFinished) {
+        if (running && !levelCleared && !gameFinished && !juegoPausado) {
             int dx = 0;
             int dy = 0;
 
@@ -580,9 +770,9 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void autoMove(int dx, int dy) {
-        if (!running || levelCleared || gameFinished) return;
+        if (!running || levelCleared || gameFinished || juegoPausado) return;
 
-        if (!timerStarted && currentLevel == 1) {
+        if (!timerStarted) {
             startTime = System.currentTimeMillis();
             timerStarted = true;
         }
@@ -613,8 +803,10 @@ public class SnakeGame extends JPanel implements ActionListener {
                         gameFinished = true;
                         gameLoopTimer.stop();
                         long endTime = System.currentTimeMillis();
-                        tiempoFinalSegundos = (int) ((endTime - startTime) / 1000);
-                        if (jugadorActual != null) {
+                        
+                        tiempoFinalSegundos = (int) (((endTime - startTime) - tiempoPausadoAcumulado) / 1000);
+                        
+                        if (jugadorActual != null && !partidaAlteradaPorAdmin) {
                             jugadorActual.setPuntos_snake(tiempoFinalSegundos);
                             repo.save(jugadorActual);
                         }
@@ -652,6 +844,11 @@ public class SnakeGame extends JPanel implements ActionListener {
         gameLoopTimer.stop();
         stopMusicaFondo(); 
         playSonidoEfecto(sonidoCausa);   
+        
+        if (jugadorActual != null) {
+            jugadorActual.setPuntos_snake(0);
+            repo.save(jugadorActual);
+        }
         repaint();
     }
 
@@ -679,9 +876,31 @@ public class SnakeGame extends JPanel implements ActionListener {
                 timerParpadeo.stop();
                 btnMusica.setVisible(true);
                 btnEfectos.setVisible(true);
+                if (esAdministrador()) btnPausaAdmin.setVisible(true);
                 loadLevel(1); 
                 return;
             }
+
+            if (esAdministrador()) {
+                if (key == KeyEvent.VK_P) {
+                    alternarPausaAdmin();
+                    return;
+                }
+                
+                if (juegoPausado) return;
+
+                if (key == KeyEvent.VK_PAGE_UP) {
+                    forzarCompletarNivelAdmin();
+                    return;
+                }
+                if (key == KeyEvent.VK_1 || key == KeyEvent.VK_NUMPAD1) { partidaAlteradaPorAdmin = true; loadLevel(1); return; }
+                if (key == KeyEvent.VK_2 || key == KeyEvent.VK_NUMPAD2) { partidaAlteradaPorAdmin = true; loadLevel(2); return; }
+                if (key == KeyEvent.VK_3 || key == KeyEvent.VK_NUMPAD3) { partidaAlteradaPorAdmin = true; loadLevel(3); return; }
+                if (key == KeyEvent.VK_4 || key == KeyEvent.VK_NUMPAD4) { partidaAlteradaPorAdmin = true; loadLevel(4); return; }
+                if (key == KeyEvent.VK_5 || key == KeyEvent.VK_NUMPAD5) { partidaAlteradaPorAdmin = true; loadLevel(5); return; }
+            }
+
+            if (juegoPausado) return;
 
             if (gameFinished) {
                 if (key == KeyEvent.VK_C) { 
