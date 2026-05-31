@@ -4,6 +4,8 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.awt.event.*;
 import java.text.SimpleDateFormat;
@@ -91,9 +93,9 @@ public class MenuPrincipal extends JFrame {
         };
         
         /*
-         Resumen de Arquitectura de la Interfaz para tu Defensa:
-         
-"El constructor de la interfaz utiliza un patrón estructural basado en la composición de layouts anidados. 
+          Resumen de Arquitectura de la Interfaz para tu Defensa:
+          
+"El constructor de la interfaz utiliza un patrón estructural basado en la composición de layouts aninados. 
 El contenedor raíz emplea un BoxLayout en el eje vertical para organizar de forma secuencial las secciones primarias de la aplicación. 
 Para romper la rigidez de esta distribución vertical y situar elementos en los extremos laterales o en cuadrículas exactas, incrusto subcontenedores regulados por BorderLayout, 
 FlowLayout y GridLayout. El control exacto de las distancias se ha delegado a objetos estructurales transparentes Box.createRigidArea, 
@@ -166,7 +168,7 @@ evitando el uso de coordenadas fijas (Absolute Positioning) y cumpliendo con las
         JLabel titulo = new JLabel("ARCADE MULTIGAME");
         // Le otorga el color cian característico de tu diseño.
         titulo.setForeground(Color.CYAN);
-        // plica una tipografía moderna (Segoe UI) muy grande (34 puntos) y en negrita.
+        // aplica una tipografía moderna (Segoe UI) muy grande (34 puntos) y en negrita.
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 34));
         // Centra el título horizontalmente respecto al eje del panel.
         titulo.setAlignmentX(java.awt.Component.CENTER_ALIGNMENT);
@@ -188,7 +190,7 @@ evitando el uso de coordenadas fijas (Absolute Positioning) y cumpliendo con las
         }));
         panelFondo.add(Box.createRigidArea(new Dimension(0, 12)));
         
-        // Lanza el panel del juego Pong de manera directa, ya que este juego no requiere obligatoriamente control de usuarios o persistencia.
+        // Lanza el panel del juego Pong de manera directa, ya que este juego no requiere obligatoriamente control de usuarios o presistencia.
         panelFondo.add(crearBotonPro("PONG RETRO", "res/pong_icon.png", e -> lanzarJuego(new PongGame(), "Pong Retro")));
         panelFondo.add(Box.createRigidArea(new Dimension(0, 12)));
         
@@ -224,10 +226,10 @@ evitando el uso de coordenadas fijas (Absolute Positioning) y cumpliendo con las
         panelInfo.setMaximumSize(new Dimension(380, 85));
 
         /*
-         Define una cadena de texto formateada en HTML. 
-         Permite usar etiquetas como <font> para pintar de cian el título, 
-         <font color='#888888'> para poner gris los detalles del TFG,
-          e incluir vuestros nombres: Jorge & Víctor.
+          Define una cadena de texto formateada en HTML. 
+          Permite usar etiquetas como <font> para pintar de cian el título, 
+          <font color='#888888'> para poner gris los detalles del TFG,
+           e incluir vuestros nombres: Jorge & Víctor.
          */
         String infoTexto = "<html><center><font color='cyan'><b>SISTEMA ARCADE v2.0</b></font><br>"
                 + "<font color='#888888'>PROYECTO TFG - BASE DE DATOS ACTIVA<br>"
@@ -262,15 +264,14 @@ evitando el uso de coordenadas fijas (Absolute Positioning) y cumpliendo con las
     }
     
     /*
-     Resumen para el tribunal:
+      Resumen para el tribunal:
 "He implementado un sistema de gestión de temas dinámico mediante la iteración de componentes en tiempo de ejecución. 
 El método detecta el estado de la sesión y recorre los contenedores de la UI aplicando polimorfismo para modificar las propiedades de los objetos JButton. 
-Esto permite una experiencia de usuario personalizada y persistente, ya que el estado del tema se recupera directamente de la configuración del usuario en la base de datos."
+Esto permite una experiencia de usuario personalizada y persistent, ya que el estado del tema se recupera directamente de la configuración del usuario en la base de datos."
      */
     
-    
     /*
-     Pregunta trampa del tribunal:
+      Pregunta trampa del tribunal:
 Pregunta: "¿Por qué usas un bucle para cambiar los colores en lugar de hacerlo directamente?"
 
 Respuesta: "Por mantenibilidad. 
@@ -278,7 +279,6 @@ Si en el futuro añado 10 juegos nuevos al menú,
  no tendré que modificar este método; el bucle detectará automáticamente los nuevos botones 
  y les aplicará el tema correcto, siguiendo el principio de diseño de código limpio."
      */
-    
     
     private void aplicarTema() {
     	// Fuerza a la ventana principal a redibujarse. 
@@ -318,10 +318,10 @@ Si en el futuro añado 10 juegos nuevos al menú,
     }
 
     /*
-     Este método es otra fábrica de componentes,
-      pero especializada en los botones pequeños y cuadrados que usas en la parte superior derecha de tu aplicación (los iconos de Perfil y Ajustes).
-       Su objetivo es crear botones compactos, 
-     minimalistas y centrados exclusivamente en el icono.
+      Este método es otra fábrica de componentes,
+       pero especializada en los botones pequeños y cuadrados que usas en la parte superior derecha de tu aplicación (los iconos de Perfil y Ajustes).
+        Su objetivo es crear botones compactos, 
+       minimalistas y centrados exclusivamente en el icono.
      */
     
     // rutaIcono: La dirección del archivo de imagen (ej: "res/perfil_icon.png").
@@ -341,20 +341,12 @@ Si en el futuro añado 10 juegos nuevos al menú,
         boton.setOpaque(true);
         // Elimina los márgenes internos predeterminados de Java. Esto es vital en botones tan pequeños para que el icono ocupe todo el espacio disponible.
         boton.setMargin(new Insets(0, 0, 0, 0));
-        // Carga la imagen desde la ruta proporcionada.
         ImageIcon icon = new ImageIcon(rutaIcono);
-        // Comprueba si la imagen se cargó correctamente (si el ancho es mayor a 0).
         if (icon.getIconWidth() > 0) {
-        	// Redimensiona la imagen a 33x33 píxeles (dejando 1 píxel de margen para el borde) usando un escalado suave.
             Image img = icon.getImage().getScaledInstance(33, 33, Image.SCALE_SMOOTH);
-            // Asigna la imagen reescalada como icono del botón.
             boton.setIcon(new ImageIcon(img));
-            // Lógica de seguridad (fallback): Si por algún motivo la imagen no carga (archivo borrado o ruta mal escrita),
-            // el botón mostrará un signo de interrogación "?" para que la interfaz no quede vacía.
         } else { boton.setText("?"); }
-        // Enlaza el botón con la acción recibida por parámetro.
         boton.addActionListener(accion);
-        // Devuelve el botón ya configurado para ser añadido al panelIconos.
         return boton;
     }
 
@@ -390,14 +382,10 @@ Si en el futuro añado 10 juegos nuevos al menú,
         boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         // Crea un borde fino de color cian semitransparente (estética neón).
         boton.setBorder(new LineBorder(new Color(0, 255, 255, 50), 1));
-        // Solo intenta poner icono si has pasado una ruta.
         if (rutaIcono != null) {
-        	// Intenta cargar la imagen desde la carpeta res.
             try {
                 ImageIcon icon = new ImageIcon(rutaIcono);
-                // Comprueba que la imagen existe y se ha cargado bien (que no sea un archivo corrupto o inexistente).
                 if (icon.getIconWidth() > 0) {
-                	// Redimensiona la imagen a 25x25 píxeles con un filtro de suavizado para que no se vea pixelada.
                     Image img = icon.getImage().getScaledInstance(25, 25, Image.SCALE_SMOOTH);
                     boton.setIcon(new ImageIcon(img));
                     boton.setIconTextGap(20);
@@ -464,176 +452,164 @@ Si en el futuro añado 10 juegos nuevos al menú,
         panelJuego.requestFocusInWindow();
     }
 
-    // Verifica si ya hay un usuario dentro. Si es así, lanza un aviso y detiene el método para no abrir el formulario dos veces.
+    // Método de autenticación con estética oscura neón cian.
     private void mostrarAutenticacion() {
         if (usuarioSesion != null) {
-        	// Si hay sesión, muestra un mensaje emergente avisando al usuario.
             JOptionPane.showMessageDialog(this, "Ya tienes una sesión iniciada: " + usuarioSesion.getUsername());
             return;
         }
 
-        // Crea una ventana modal. El parámetro true es vital: bloquea el menú principal hasta que el usuario se identifique o cierre esta ventana.
-        JDialog dialog = new JDialog(this, "Autenticación", true);
-        // Define el tamaño de la ventana (400px ancho, 250px alto).
-        dialog.setSize(400, 250);
-        // Centra la ventanita justo encima del menú principal.
-        dialog.setLocationRelativeTo(this);
-        // Crea el componente de pestañas para alternar entre "Iniciar Sesión" y "Crear Jugador".
+        JDialog dialog = createStyledDialog("AUTENTICACIÓN DE OPERADOR", 420, 320);
+        dialog.setLayout(new BorderLayout());
+
+        Color fondoArcadeOscuro = new Color(20, 20, 30);
+
         JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tabbedPane.setBackground(fondoArcadeOscuro); 
+        tabbedPane.setForeground(Color.CYAN);
+        tabbedPane.setBorder(null); 
 
-        // Crea el panel para el login usando una rejilla flexible (GridBagLayout).
-        JPanel panelLogin = new JPanel(new GridBagLayout());
-        // Crea el panel para el registro con la misma rejilla.
-        JPanel panelRegistro = new JPanel(new GridBagLayout());
-        // Crea el objeto que dicta las reglas de cómo se colocan los elementos en la rejilla.
+        JPanel panelLogin = new JPanel(new GridBagLayout()); 
+        panelLogin.setBackground(fondoArcadeOscuro); panelLogin.setOpaque(true);
+        
+        JPanel panelRegistro = new JPanel(new GridBagLayout()); 
+        panelRegistro.setBackground(fondoArcadeOscuro); panelRegistro.setOpaque(true);
+        
         GridBagConstraints gbc = new GridBagConstraints();
-        // Define un margen de 5 píxeles alrededor de cada cuadro de texto o botón.
-        // gbc.fill = GridBagConstraints.HORIZONTAL;: Indica que los elementos deben estirarse horizontalmente para rellenar su hueco.
-        gbc.insets = new Insets(5, 5, 5, 5); gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(8, 8, 8, 8); 
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Crea el campo para escribir el nombre de usuario.
-        // userLogin.setPreferredSize(new Dimension(180, 25));: Le da un tamaño estándar al campo de texto.
-        JTextField userLogin = new JTextField(); userLogin.setPreferredSize(new Dimension(180, 25));
-        // Crea el campo para la contraseña (oculta lo que escribes).
-        // Le da el mismo tamaño que al de usuario.
-        JPasswordField passLogin = new JPasswordField(); passLogin.setPreferredSize(new Dimension(180, 25));
-        // Crea el botón con el texto "Entrar".
-        JButton btnLogin = new JButton("Entrar");
+        Font fontLabels = new Font("Monospaced", Font.BOLD, 13);
+        Color colorLabels = Color.WHITE;
 
-        // Pone la etiqueta "Usuario:" en la columna 0, fila 0.
-        gbc.gridx = 0; gbc.gridy = 0; panelLogin.add(new JLabel("Usuario:"), gbc);
-        // Pone el campo de texto en la columna 1, fila 0.
+        // Inputs Login
+        JTextField userLogin = new JTextField(); 
+        userLogin.setPreferredSize(new Dimension(190, 28));
+        userLogin.setBackground(new Color(15, 15, 20)); userLogin.setForeground(Color.WHITE);
+        userLogin.setCaretColor(Color.CYAN); userLogin.setBorder(new LineBorder(new Color(0, 255, 255, 60), 1));
+        userLogin.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        JPasswordField passLogin = new JPasswordField(); 
+        passLogin.setPreferredSize(new Dimension(190, 28));
+        passLogin.setBackground(new Color(15, 15, 20)); passLogin.setForeground(Color.WHITE);
+        passLogin.setCaretColor(Color.CYAN); passLogin.setBorder(new LineBorder(new Color(0, 255, 255, 60), 1));
+        passLogin.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        JButton btnLogin = new JButton("ENTRAR AL SISTEMA");
+        estilizarBotonPopup(btnLogin);
+
+        JLabel lblUserL = new JLabel("USUARIO:"); lblUserL.setForeground(colorLabels); lblUserL.setFont(fontLabels);
+        JLabel lblPassL = new JLabel("PASS:"); lblPassL.setForeground(colorLabels); lblPassL.setFont(fontLabels);
+        
+        gbc.gridx = 0; gbc.gridy = 0; panelLogin.add(lblUserL, gbc);
         gbc.gridx = 1; panelLogin.add(userLogin, gbc);
-        // Pone la etiqueta "Contraseña:" en columna 0, fila 1.
-        gbc.gridx = 0; gbc.gridy = 1; panelLogin.add(new JLabel("Contraseña:"), gbc);
-        // Pone el campo de contraseña en columna 1, fila 1.
+        gbc.gridx = 0; gbc.gridy = 1; panelLogin.add(lblPassL, gbc);
         gbc.gridx = 1; panelLogin.add(passLogin, gbc);
-        // Pone el botón "Entrar" en columna 1, fila 2.
-        gbc.gridx = 1; gbc.gridy = 2; panelLogin.add(btnLogin, gbc);
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2; gbc.insets = new Insets(15, 8, 8, 8);
+        panelLogin.add(btnLogin, gbc);
 
-        // Define qué pasa cuando haces clic en el botón.
         btnLogin.addActionListener(e -> {
-        	// Lee el nombre escrito y borra espacios accidentales al principio o final.
             String username = userLogin.getText().trim();
-            // Lee la contraseña escrita (la convierte de array de caracteres a texto).
             String password = new String(passLogin.getPassword());
 
-            // Comprueba si has metido las claves maestras.
             if (username.equalsIgnoreCase("admin") && password.equals("admin1234")) {
-            	// Busca si ya existe un usuario "admin" en la base de datos.
                 Usuario admin = usuarioRepo.findAll().stream().filter(u -> u.getUsername().equalsIgnoreCase("admin")).findFirst().orElse(null);
-                // Si no existe el admin todavía (primer arranque)...
                 if (admin == null) {
-                	// Crea un objeto usuario nuevo.
                     admin = new Usuario();
-                    // Le pone de nombre "admin".
                     admin.setUsername("admin");
-                    // Encripta la contraseña antes de guardarla.
                     admin.setPassword(encoder.encode("admin1234"));
-                    // Le activa el modo oscuro por defecto.
                     admin.setDarkMode(true);
-                    // Guarda el admin creado en la base de datos SQL.
                     usuarioRepo.save(admin);
                 }
-                // Inicia la sesión como administrador.
                 usuarioSesion = admin;
-                // Refresca los colores del menú según la preferencia del admin.
                 aplicarTema();
-                // Muestra el aviso de éxito.
                 JOptionPane.showMessageDialog(dialog, "Acceso Admin concedido.");
-                // Cierra la ventana de autenticación.
                 dialog.dispose();
-                // Sale de la función para no seguir comprobando otros usuarios.
                 return;
             }
 
-            // Busca en la BD al usuario que has escrito.
             Usuario u = usuarioRepo.findAll().stream()
                     .filter(user -> user.getUsername().equalsIgnoreCase(username))
                     .findFirst().orElse(null);
 
-            // Si existe el usuario y la contraseña (encriptada) coincide con la que has escrito...
             if (u != null && encoder.matches(password, u.getPassword())) {
-            	// Guarda al usuario en la sesión actual.
                 usuarioSesion = u;
-                // Cambia los colores del menú a los de ese usuario.
                 aplicarTema(); 
-                //  Avisa del éxito.
                 JOptionPane.showMessageDialog(dialog, "¡Bienvenido, " + username + "!");
-                // Cierra la ventanita
                 dialog.dispose();
             } else {
-            	// Avisa del error.
                 JOptionPane.showMessageDialog(dialog, "Usuario o contraseña incorrectos.");
             }
         });
 
-        // Crea el campo de usuario para registro.
-        JTextField userReg = new JTextField(); userReg.setPreferredSize(new Dimension(180, 25));
-        // Crea el campo de contraseña para registro.
-        JPasswordField passReg = new JPasswordField(); passReg.setPreferredSize(new Dimension(180, 25));
-        // Crea el campo para repetir la contraseña.
-        JPasswordField passRegConfirm = new JPasswordField(); passRegConfirm.setPreferredSize(new Dimension(180, 25));
-        // Crea el botón de registro.
-        JButton btnReg = new JButton("Registrarse");
+        // Inputs Registro
+        gbc.gridwidth = 1; gbc.insets = new Insets(6, 6, 6, 6); 
 
-        gbc.gridx = 0; gbc.gridy = 0; panelRegistro.add(new JLabel("Usuario:"), gbc);
+        JTextField userReg = new JTextField(); 
+        userReg.setPreferredSize(new Dimension(190, 28));
+        userReg.setBackground(new Color(15, 15, 20)); userReg.setForeground(Color.WHITE);
+        userReg.setCaretColor(Color.CYAN); userReg.setBorder(new LineBorder(new Color(0, 255, 255, 60), 1));
+        userReg.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        JPasswordField passReg = new JPasswordField(); 
+        passReg.setPreferredSize(new Dimension(190, 28));
+        passReg.setBackground(new Color(15, 15, 20)); passReg.setForeground(Color.WHITE);
+        passReg.setCaretColor(Color.CYAN); passReg.setBorder(new LineBorder(new Color(0, 255, 255, 60), 1));
+        passReg.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        JPasswordField passRegConfirm = new JPasswordField(); 
+        passRegConfirm.setPreferredSize(new Dimension(190, 28));
+        passRegConfirm.setBackground(new Color(15, 15, 20)); passRegConfirm.setForeground(Color.WHITE);
+        passRegConfirm.setCaretColor(Color.CYAN); passRegConfirm.setBorder(new LineBorder(new Color(0, 255, 255, 60), 1));
+        passRegConfirm.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+
+        JButton btnReg = new JButton("CREAR NUEVA CUENTA");
+        estilizarBotonPopup(btnReg);
+
+        JLabel lblUserR = new JLabel("NUEVO USER:"); lblUserR.setForeground(colorLabels); lblUserR.setFont(fontLabels);
+        JLabel lblPassR = new JLabel("PASSWORD:"); lblPassR.setForeground(colorLabels); lblPassR.setFont(fontLabels);
+        JLabel lblConfR = new JLabel("CONFIRMAR:"); lblConfR.setForeground(colorLabels); lblConfR.setFont(fontLabels);
+
+        gbc.gridx = 0; gbc.gridy = 0; panelRegistro.add(lblUserR, gbc);
         gbc.gridx = 1; panelRegistro.add(userReg, gbc);
-        gbc.gridx = 0; gbc.gridy = 1; panelRegistro.add(new JLabel("Contraseña:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 1; panelRegistro.add(lblPassR, gbc);
         gbc.gridx = 1; panelRegistro.add(passReg, gbc);
-        gbc.gridx = 0; gbc.gridy = 2; panelRegistro.add(new JLabel("Confirmar:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 2; panelRegistro.add(lblConfR, gbc);
         gbc.gridx = 1; panelRegistro.add(passRegConfirm, gbc);
-        gbc.gridx = 1; gbc.gridy = 3; panelRegistro.add(btnReg, gbc);
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.insets = new Insets(12, 6, 6, 6);
+        panelRegistro.add(btnReg, gbc);
 
         btnReg.addActionListener(e -> {
-        	// Lee el nombre deseado.
             String username = userReg.getText().trim();
-            // Lee la primera contraseña.
             String password = new String(passReg.getPassword());
-            // Lee la confirmación.
             String confirm = new String(passRegConfirm.getPassword());
 
-            // Si hay campos vacíos, no hace nada.
             if (username.isEmpty() || password.isEmpty()) return;
             if (!password.equals(confirm)) {
                 JOptionPane.showMessageDialog(dialog, "Las contraseñas no coinciden.");
                 return;
             }
 
-            // Comprueba en la BD si ese nombre ya está pillado.
             boolean existe = usuarioRepo.findAll().stream().anyMatch(u -> u.getUsername().equalsIgnoreCase(username));
 
-            // Si el nombre ya está en uso...
             if (existe) {
-            	// Avisa del error.
                 JOptionPane.showMessageDialog(dialog, "Ese nombre ya existe.");
             } else {
-            	// Crea una nueva entidad Usuario.
                 Usuario nuevo = new Usuario();
-                // Le asigna el nombre.
                 nuevo.setUsername(username);
-                // Encripta la contraseña para cumplir con la seguridad.
                 nuevo.setPassword(encoder.encode(password));
-                // Le pone el modo oscuro por defecto.
                 nuevo.setDarkMode(true);
-                // Guarda el nuevo usuario en SQL e inicia sesión con él.
                 usuarioSesion = usuarioRepo.save(nuevo);
-                // Pone los colores en modo oscuro.
                 aplicarTema(); 
-                // Avisa del éxito.
                 JOptionPane.showMessageDialog(dialog, "Usuario creado exitosamente.");
-                // Cierra la ventana.
                 dialog.dispose();
             }
         });
 
-        // Crea la pestaña 1 con el panel de login.
-        tabbedPane.addTab("Iniciar Sesión", panelLogin);
-        // Crea la pestaña 2 con el panel de registro.
-        tabbedPane.addTab("Crear Jugador", panelRegistro);
-        // Mete el conjunto de pestañas en la ventana emergente.
-        dialog.add(tabbedPane);
-        // Muestra la ventana finalmente.
+        tabbedPane.addTab(" INICIAR SESIÓN ", panelLogin);
+        tabbedPane.addTab(" CREAR JUGADOR ", panelRegistro);
+        dialog.add(tabbedPane, BorderLayout.CENTER);
         dialog.setVisible(true);
     }
     
@@ -643,174 +619,100 @@ Si en el futuro añado 10 juegos nuevos al menú,
      asegurando que la nueva contraseña se procese mediante un hash de BCrypt antes de ser persistida en la base de datos a través del repositorio de Spring Data JPA."
      */
     private void mostrarPerfil() {
-    	// Crea la ventana emergente con un tamaño de 400x350. Al ser un JDialog, bloquea la interacción con la ventana principal hasta que se cierre.
         JDialog d = createStyledDialog("PERFIL DEL JUGADOR", 400, 350);
-        // Establece un diseño de "puntos cardinales". El 10, 10 indica la separación (gap) entre las zonas (Norte, Sur, Centro, etc.).
         d.setLayout(new BorderLayout(10, 10));
-        // Crea un panel que organiza los elementos en una cuadrícula. El 0 significa "tantas filas como necesites" y el 2 indica exactamente dos columnas (Etiqueta y Valor).
         JPanel panelDatos = new JPanel(new GridLayout(0, 2, 10, 10));
-        // Hace que el panel sea transparente para que se vea el fondo degradado que definiste en el método anterior.
         panelDatos.setOpaque(false);
-        // Añade un margen de 20 píxeles por cada lado para que el texto no toque los bordes de la ventana.
         panelDatos.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        // Define el estilo (fuente Monospaced, negrita, tamaño 12)
         Font fontLabel = new Font("Monospaced", Font.BOLD, 12);
-        // y el color (Cian) que se usará para los títulos de las estadísticas
         Color colLabel = Color.CYAN;
         
-        // addStatRow(...): Llama al método auxiliar que explicamos antes para añadir cuatro filas: el nombre del jugador y sus puntos en Snake, 2048 y Tetris.
         addStatRow(panelDatos, "JUGADOR:", usuarioSesion.getUsername().toUpperCase(), fontLabel, colLabel);
         addStatRow(panelDatos, "SNAKE:", usuarioSesion.getPuntos_snake() + " pts", fontLabel, colLabel);
         addStatRow(panelDatos, "2048:", usuarioSesion.getPuntos_2048() + " pts", fontLabel, colLabel);
         addStatRow(panelDatos, "TETRIS:", usuarioSesion.getPuntos_tetris() + " pts", fontLabel, colLabel);
 
-        // Crea un segundo panel en la parte inferior para los controles de actualización.
         JPanel panelAcciones = new JPanel(new GridBagLayout());
         panelAcciones.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
         
-        // Crea el cuadro de texto para la contraseña. Al ser un JPasswordField, oculta los caracteres con puntos por seguridad.
         JPasswordField pass = new JPasswordField(15);
-        // Personaliza el estilo del cuadro de texto para que encaje con la estética oscura y cian del arcade.
         pass.setBackground(new Color(25, 25, 35)); pass.setForeground(Color.WHITE);
         pass.setCaretColor(Color.CYAN); pass.setBorder(new LineBorder(Color.CYAN, 1));
         
-        // Coloca el texto indicativo en la rejilla del panel de acciones.
         gbc.gridx = 0; gbc.gridy = 0; panelAcciones.add(new JLabel("NUEVA CONTRASEÑA:"), gbc);
         gbc.gridy = 1; panelAcciones.add(pass, gbc);
         
-        // Crea el botón para confirmar el cambio.
         JButton btnGuardar = new JButton("ACTUALIZAR");
-        // Aplica el estilo visual (bordes, colores, efectos) que definiste en el método de estilizado.
         estilizarBotonPopup(btnGuardar);
         btnGuardar.addActionListener(e -> {
-        	// Línea crítica. Toma la nueva contraseña, la encripta usando el encoder (BCrypt) y la guarda en el objeto en memoria.
             usuarioSesion.setPassword(encoder.encode(new String(pass.getPassword())));
-            // Acceso a BD. Actualiza la fila del usuario en la base de datos SQL con la nueva contraseña ya cifrada.
             usuarioRepo.save(usuarioSesion);
-            // Cierra la ventana de perfil.
             d.dispose();
-            // Confirma al usuario que el cambio ha sido exitoso.
             JOptionPane.showMessageDialog(this, "Datos actualizados.");
         });
         gbc.gridy = 2; gbc.insets = new Insets(10,0,0,0); panelAcciones.add(btnGuardar, gbc);
 
-        // Pone las estadísticas en el centro de la ventana.
         d.add(panelDatos, BorderLayout.CENTER);
-        // Pone la zona de cambio de contraseña en la parte de abajo.
         d.add(panelAcciones, BorderLayout.SOUTH);
-        // Hace que la ventana aparezca en pantalla.
         d.setVisible(true);
     }
 
     /*
-     RESUMEN:
-     "Este método implementa la gestión de preferencias del usuario y el control de sesión. 
-     Destaca el uso de GridBagLayout para un diseño responsivo dentro del diálogo y la integración con Spring Data JPA mediante el método save, 
-     lo que permite que la personalización del 'Modo Oscuro' persista de forma permanente en la base de datos relacional."
+      RESUMEN:
+"Este método implementa la gestión de preferencias del usuario y el control de sesión. 
+Destaca el uso de GridBagLayout para un diseño responsivo dentro del diálogo y la integración con Spring Data JPA mediante el método save, 
+lo que permite que la personalización del 'Modo Oscuro' persista de forma permanente en la base de datos relacional."
      */
     private void mostrarAjustes() {
-    	// Crea una ventana emergente (hija de la principal) con el título "CONFIGURACIÓN" y un tamaño de 350x300 píxeles, usando tu método de estilo personalizado.
         JDialog d = createStyledDialog("CONFIGURACIÓN", 350, 300);
-        // Establece el gestor de diseño más potente de Java Swing, que permite alinear componentes en una rejilla flexible.
         d.setLayout(new GridBagLayout());
-        // Crea el objeto de "restricciones" que le dirá al GridBagLayout dónde y cómo colocar cada botón o check.
         GridBagConstraints gbc = new GridBagConstraints();
-        // Define un margen de 10 píxeles alrededor de cada elemento para que no estén pegados entre sí.
         gbc.insets = new Insets(10, 10, 10, 10);
 
-        // Crea una casilla de verificación. El segundo parámetro hace que aparezca marcada o no dependiendo de lo que el usuario tenga guardado en su perfil actualmente.
         JCheckBox checkDark = new JCheckBox("  MODO OSCURO", usuarioSesion.isDarkMode());
-        // Hace que el fondo del checkbox sea transparente para que se vea el degradado del panel de fondo.
         checkDark.setOpaque(false);
-        // Pone el texto del checkbox en color blanco.
         checkDark.setForeground(Color.WHITE);
-        // Aplica una fuente de estilo "consola de programador" para mantener la estética retro.
         checkDark.setFont(new Font("Monospaced", Font.BOLD, 14));
-        // Coloca el checkbox en la primera fila y primera columna (0,0) y lo añade a la ventana.
         gbc.gridx = 0; gbc.gridy = 0; d.add(checkDark, gbc);
 
-        // Crea el botón de desconexión.
         JButton btnLogout = new JButton("CERRAR SESIÓN");
-        // Llama a tu método (el que explicamos antes) para ponerle el borde cian y el efecto de ratón.
         estilizarBotonPopup(btnLogout);
         btnLogout.addActionListener(e -> {
-        	// Línea crítica. Borra al usuario de la memoria del programa. Al ser null, el menú principal sabrá que no hay nadie dentro.
             usuarioSesion = null;
-            // Refresca los colores del menú (volverá al tema oscuro por defecto).
             aplicarTema();
-            // Cierra la ventana de ajustes.
             d.dispose();
-            // Muestra un mensaje confirmando que ha salido.
             JOptionPane.showMessageDialog(this, "Sesión finalizada.");
         });
-        // Lo coloca en la segunda fila (y=1).
         gbc.gridy = 1; d.add(btnLogout, gbc);
 
-        // Crea el botón para confirmar ajustes.
         JButton btnGuardar = new JButton("GUARDAR CAMBIOS");
         estilizarBotonPopup(btnGuardar);
         btnGuardar.addActionListener(e -> {
-        	// Actualiza el objeto Usuario en memoria con lo que el usuario haya marcado en el checkbox.
             usuarioSesion.setDarkMode(checkDark.isSelected());
-            // Conexión con BD. Envía el cambio a la base de datos SQL para que la próxima vez que entre, se acuerde de su preferencia.
             usuarioRepo.save(usuarioSesion);
-            // Actualiza los colores de la interfaz al instante.
             aplicarTema();
-            // Cierra la ventanita.
             d.dispose();
         });
-        // Lo coloca en la tercera fila (y=2).
         gbc.gridy = 2; d.add(btnGuardar, gbc);
-        // Hace que la ventana de ajustes aparezca finalmente ante el usuario.
         d.setVisible(true);
     }
     
-    /*
-     Este método es el encargado de unificar los méritos del jugador. 
-     Su lógica es interesante porque no todos tus juegos puntúan igual:
-      mientras que en unos sumas puntos (2048, Tetris), en el Snake lo que guardas es el tiempo, 
-      por lo que necesitas una fórmula para convertir ese tiempo en una puntuación que se pueda sumar a las demás.
-     */
-
-    //RESUMEN DEL METODO:
-    /*
-     "He implementado este método para normalizar las puntuaciones de los distintos juegos. 
-     Dado que el juego Snake se basa en el tiempo de resolución, 
-     utilizo una fórmula de inversión (restando el tiempo de una constante de 5000 puntos) para que los mejores tiempos se traduzcan en mayores puntuaciones. 
-     Esto permite obtener un Ranking Global equitativo que suma el desempeño del usuario en todas las áreas del Arcade."
-     */
-    // Usuario u: Recibe el objeto del usuario al que le queremos calcular la nota global.
     private int calcularTotal(Usuario u) {
-    	// Aquí usas un operador ternario (el ? y el :), que es como un if en una sola línea.
-        // La condición: (u.getPuntos_snake() > 0). Comprueba si el usuario ha jugado alguna vez al Snake.
-    	
-    	/*
-    	 // Si ha jugado: Calcula los puntos restando su tiempo de un "techo" de 5000. Usas Math.max(0, ...) para asegurar que, 
-    	// si el usuario tarda más de 5000 segundos, la puntuación sea 0 y nunca un número negativo.
-    	 */
-    	
-    	// Si NO ha jugado: Le asigna directamente un 0.
     	int ptsSnake = (u.getPuntos_snake() > 0) ? Math.max(0, 5000 - u.getPuntos_snake()) : 0;
-        // Suma la puntuación calculada del Snake con los puntos directos que el usuario tiene guardados de los otros dos juegos.
     	return ptsSnake + u.getPuntos_2048() + u.getPuntos_tetris();
     }
 
-    private void mostrarRanking() { // 403: Abre la ventana de méritos.
-        JDialog ventanaRanking = new JDialog(this, "RANKING GLOBAL", true);
-        ventanaRanking.setSize(650, 550);
-        ventanaRanking.setLocationRelativeTo(this);
-        ventanaRanking.setLayout(new BorderLayout());
+    // Método de Ranking modificado con Renderizador de Celdas seguro para aplicar colores de medallas reales
+    private void mostrarRanking() {
+        JDialog ventanaRanking = createStyledDialog("RANKING GLOBAL DE MÉRITOS", 650, 550);
+        ventanaRanking.setLayout(new BorderLayout(10, 10));
         
-     // 408: Trae TODOS los jugadores de la base de datos.
         List<Usuario> usuarios = usuarioRepo.findAll();
-     // 409: Filtra para no mostrar al administrador.
         usuarios.removeIf(u -> "admin".equalsIgnoreCase(u.getUsername()));
-     // 410: ORDENA de mayor a menor puntuación.
         usuarios.sort((u1, u2) -> Integer.compare(calcularTotal(u2), calcularTotal(u1)));
         
-     // 412-421: Crea el modelo de la tabla y añade filas con los datos (Posición, Nombre, Puntos de cada juego).
         String[] columnas = {"POS", "JUGADOR", "TIME SNAKE", "MAX 2048", "PUNTOS TETRIS", "TOTAL"};
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0) { 
             @Override public boolean isCellEditable(int r, int c) { return false; } 
@@ -818,102 +720,137 @@ Si en el futuro añado 10 juegos nuevos al menú,
         
         int pos = 1;
         for (Usuario u : usuarios) {
-            String labelPos = (pos==1) ? "🏆 1º" : (pos==2) ? "🥈 2º" : (pos==3) ? "🥉 3º" : String.valueOf(pos);
+            String labelPos = (pos==1) ? "[1st]" : (pos==2) ? "[2nd]" : (pos==3) ? "[3rd]" : String.valueOf(pos) + "º";
             modelo.addRow(new Object[]{ labelPos, u.getUsername(), u.getPuntos_snake() + "s", u.getPuntos_2048(), u.getPuntos_tetris(), calcularTotal(u) });
             pos++;
         }
         
         JTable tabla = new JTable(modelo);
+        tabla.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        tabla.setBackground(new Color(25, 25, 35));
+        tabla.setForeground(Color.WHITE);
+        tabla.setRowHeight(25);
+        tabla.setSelectionBackground(new Color(0, 255, 255, 40));
+        tabla.setSelectionForeground(Color.CYAN);
+        tabla.setGridColor(new Color(0, 255, 255, 30));
         tabla.getColumnModel().getColumn(0).setPreferredWidth(80);
-        ventanaRanking.add(new JScrollPane(tabla), BorderLayout.CENTER);
+        
+        // --- INYECCIÓN DEL FILTRADO DE COLOR EN CALIENTE ---
+        tabla.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public java.awt.Component getTableCellRendererComponent(JTable t, Object val, boolean isSelected, boolean hasFocus, int row, int col) {
+                java.awt.Component c = super.getTableCellRendererComponent(t, val, isSelected, hasFocus, row, col);
+                
+                // Si la celda está seleccionada por el usuario, respetamos el color de selección cian
+                if (isSelected) {
+                    c.setForeground(Color.CYAN);
+                } else {
+                    // Evaluamos el texto de la primera columna (Posición) para inyectar los colores metalizados
+                    String posText = t.getValueAt(row, 0).toString();
+                    if ("[1st]".equals(posText)) {
+                        c.setForeground(new Color(255, 215, 0)); // Dorado Brillante (Oro)
+                    } else if ("[2nd]".equals(posText)) {
+                        c.setForeground(new Color(192, 192, 192)); // Plateado Estilizado (Plata)
+                    } else if ("[3rd]".equals(posText)) {
+                        c.setForeground(new Color(205, 127, 50)); // Bronce Real
+                    } else {
+                        c.setForeground(Color.WHITE); // Texto estándar para el resto de posiciones
+                    }
+                }
+                return c;
+            }
+        });
+        
+        JTableHeader header = tabla.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBackground(new Color(40, 40, 50));
+        header.setForeground(Color.CYAN);
+        header.setBorder(new LineBorder(new Color(0, 255, 255, 50), 1));
+
+        JScrollPane scrollPane = new JScrollPane(tabla);
+        scrollPane.getViewport().setBackground(new Color(20, 20, 30));
+        scrollPane.setBorder(new LineBorder(new Color(0, 255, 255, 30), 1));
+        
+        JPanel panelContenedor = new JPanel(new BorderLayout());
+        panelContenedor.setOpaque(false);
+        panelContenedor.setBorder(new EmptyBorder(15, 15, 15, 15));
+        panelContenedor.add(scrollPane, BorderLayout.CENTER);
+        ventanaRanking.add(panelContenedor, BorderLayout.CENTER);
         
         boolean esAdmin = usuarioSesion != null && "admin".equalsIgnoreCase(usuarioSesion.getUsername());
         
-     // 432: Si el usuario actual es "admin", activa herramientas especiales.
-        // Botón Borrar: llama a usuarioRepo.delete(u) para eliminar un registro de la BD.
-        // Botón Editar: abre un formulario para modificar puntos a mano.
         if (esAdmin) {
-            JPanel panelAdmin = new JPanel();
-            JButton btnBorrar = new JButton("Borrar");
-            JButton btnEditar = new JButton("Editar");
+            JPanel panelAdmin = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+            panelAdmin.setOpaque(false);
             
-            /*
-             Este bloque implementa las funciones de gestión del administrador. 
-             He utilizado JOptionPane para crear formularios dinámicos y cuadros de confirmación, 
-             integrándolos con los métodos delete y save de Spring Data JPA para asegurar que cualquier cambio administrativo se refleje inmediatamente en la persistencia de la base de datos."
-             */
+            JButton btnBorrar = new JButton("BORRAR REGISTRO");
+            JButton btnEditar = new JButton("EDITAR OPERADOR");
             
-            // Define la acción que ocurrirá cuando hagas clic en el botón Borrar.
+            estilizarBotonPopup(btnEditar);
+            estilizarBotonPopup(btnBorrar);
+            
+            btnBorrar.setBorder(new LineBorder(new Color(255, 0, 0, 100), 1));
+            btnBorrar.addMouseListener(new MouseAdapter() {
+                public void mouseEntered(MouseEvent e) { btnBorrar.setBackground(new Color(70, 20, 20)); }
+                public void mouseExited(MouseEvent e) { btnBorrar.setBackground(new Color(40, 40, 50)); }
+            });
+            
             btnBorrar.addActionListener(e -> {
-            	// Pregunta a la tabla: "¿Qué fila tiene seleccionada el usuario ahora mismo?". Guarda el número de fila.
                 int fila = tabla.getSelectedRow();
-                // Comprueba si realmente hay una fila seleccionada. Si no hay nada seleccionado, el valor es -1 y no hace nada.
                 if (fila != -1) {
-                	// Busca en tu lista de objetos usuarios aquel que corresponde a la fila que el admin ha pinchado.
                     Usuario u = usuarios.get(fila);
-                    // Lanza una ventana de confirmación. Solo si el admin pulsa "SÍ", se ejecuta lo siguiente. 
-                    // Esto es una medida de seguridad para no borrar por error.
-                    if (JOptionPane.showConfirmDialog(ventanaRanking, "¿Borrar a " + u.getUsername() + "?", "Confirmar", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-                        // Línea clave de Base de Datos. 
-                    	// Llama al repositorio de Spring para ejecutar el comando SQL DELETE y borrar ese usuario de la base de datos.
+                    if (JOptionPane.showConfirmDialog(ventanaRanking, "¿Seguro que deseas eliminar permanentemente a " + u.getUsername() + "?", "CONFIRMAR BAJA", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
                     	usuarioRepo.delete(u);
-                    	// Cierra la ventana actual del ranking.
                         ventanaRanking.dispose();
-                        // Vuelve a llamar al método para abrir el ranking. Esto hace que la tabla se refresque y el usuario borrado ya no aparezca.
                         mostrarRanking();
                     }
                 }
             });
             
-            // Define la acción para el botón Editar.
             btnEditar.addActionListener(e -> {
-            	// Igual que antes, detecta qué fila de la tabla se ha seleccionado.
                 int fila = tabla.getSelectedRow();
-                // Verifica que haya un usuario seleccionado.
                 if (fila != -1) {
-                	// Obtiene el objeto Usuario de la lista.
                     Usuario u = usuarios.get(fila);
-                    // Crea una cajita de texto y escribe dentro los puntos actuales de Tetris de ese usuario.
                     JTextField txtTetris = new JTextField(String.valueOf(u.getPuntos_tetris()));
-                   // Crea una cajita de texto y escribe dentro los puntos actuales del 2048 de ese usuario.
                     JTextField txt2048 = new JTextField(String.valueOf(u.getPuntos_2048()));
-                    // Crea una cajita de texto y escribe dentro los puntos actuales del snake de ese usuario.
                     JTextField txtSnake = new JTextField(String.valueOf(u.getPuntos_snake()));
-                    // Crea un panel invisible con una rejilla de 3 filas y 2 columnas para organizar los textos y las cajitas.
-                    JPanel panelForm = new JPanel(new GridLayout(3, 2, 5, 5));
-                    // Añade la etiqueta "Tetris" y su caja de texto al panel. Repite esto para los otros juegos.
-                    panelForm.add(new JLabel("Tetris:")); panelForm.add(txtTetris);
-                    panelForm.add(new JLabel("2048:")); panelForm.add(txt2048);
-                    panelForm.add(new JLabel("Snake:")); panelForm.add(txtSnake);
-                    // Muestra una ventana emergente que contiene el panel con las cajitas que acabamos de crear.
-                    int res = JOptionPane.showConfirmDialog(ventanaRanking, panelForm, "Editar " + u.getUsername(), JOptionPane.OK_CANCEL_OPTION);
-                    // Si el administrador pulsa "Aceptar" después de cambiar los números...
+                    
+                    JTextField[] inputs = {txtTetris, txt2048, txtSnake};
+                    for(JTextField input : inputs) {
+                        input.setBackground(new Color(15, 15, 20)); input.setForeground(Color.WHITE);
+                        input.setCaretColor(Color.CYAN); input.setBorder(new LineBorder(Color.CYAN, 1));
+                    }
+                    
+                    JPanel panelForm = new JPanel(new GridLayout(3, 2, 8, 8));
+                    panelForm.setBackground(new Color(20, 20, 30));
+                    
+                    JLabel l1 = new JLabel("Tetris:"); l1.setForeground(Color.WHITE);
+                    JLabel l2 = new JLabel("2048:"); l2.setForeground(Color.WHITE);
+                    JLabel l3 = new JLabel("Snake:"); l3.setForeground(Color.WHITE);
+                    
+                    panelForm.add(l1); panelForm.add(txtTetris);
+                    panelForm.add(l2); panelForm.add(txt2048);
+                    panelForm.add(l3); panelForm.add(txtSnake);
+                    
+                    int res = JOptionPane.showConfirmDialog(ventanaRanking, panelForm, "MODIFICAR HISTORIAL DE: " + u.getUsername().toUpperCase(), JOptionPane.OK_CANCEL_OPTION);
                     if (res == JOptionPane.OK_OPTION) {
-                    	// Abre un bloque de seguridad por si el admin escribe letras en lugar de números por error.
                         try {
-                        	// Lee lo que hay en la cajita, lo convierte de "Texto" a "Número Entero" y se lo asigna al objeto usuario. Repite para los demás juegos.
                             u.setPuntos_tetris(Integer.parseInt(txtTetris.getText()));
                             u.setPuntos_2048(Integer.parseInt(txt2048.getText()));
                             u.setPuntos_snake(Integer.parseInt(txtSnake.getText()));
-                            // Línea clave de Base de Datos. Llama al repositorio para ejecutar el comando SQL UPDATE y guardar los nuevos puntos en la base de datos.
                             usuarioRepo.save(u);
-                            // Cierra y reabre el ranking para que se vean los puntos actualizados.
                             ventanaRanking.dispose();
                             mostrarRanking();
-                            // Si el admin escribió algo que no es un número, muestra un aviso de error en lugar de que el programa se rompa.
                         } catch (NumberFormatException ex) {
                             JOptionPane.showMessageDialog(ventanaRanking, "Error numérico");
                         }
                     }
                 }
             });
-            // Añade los dos botones al panel especial para el administrador.
             panelAdmin.add(btnEditar);
             panelAdmin.add(btnBorrar);
-            // Coloca ese panel de botones en la parte de abajo de la ventana de ranking.
             ventanaRanking.add(panelAdmin, BorderLayout.SOUTH);
         }
-        // Hace que la ventana de ranking aparezca en pantalla.
         ventanaRanking.setVisible(true);
     }
     
@@ -934,90 +871,31 @@ Si en el futuro añado 10 juegos nuevos al menú,
         return d;
     }
 
-    /*
-     * Este metodo es un configurador de estilo visual y comportamiento para los botones que aparecen en las ventanas emergentes
-     * Su funcion es asegurar que todos los botones de dialogo tengan un aspecto moderno
-     * y que reaccionen cuando el usuario pasa el raton por encima
-     
-     
-     RESUMEN DEL METODO:
-     "Este método encapsula toda la lógica de diseño de los botones de los diálogos.
-      Utiliza un MouseListener para implementar un efecto de hover (cambio de color al pasar el ratón) 
-      y define una identidad visual basada en colores oscuros y bordes de neón cian,
-      mejorando la experiencia de usuario (UX) mediante feedback visual inmediato."
-     */
-    
-    // JButton b: Recibe como parámetro el botón que quieres "tunear". 
-    // Al pasarle el objeto, el método modifica directamente sus propiedades.
     private void estilizarBotonPopup(JButton b) {
-    	// Define el tamaño ideal del boton: 220 pixeles de ancho por 40 de alto
         b.setPreferredSize(new Dimension(220, 40));
-        // Establece el color de fondo. Es un tono gris muy oscuro con un matiz azulado
         b.setBackground(new Color(40, 40, 50));
-        // Cambia el color del texto a blanco para que resalte sobre el fondo oscuro
         b.setForeground(Color.WHITE);
-        // Aplica la fuente Segoe UI en negrita con un tamaño de 12 puntos. Es una fuente moderna y legible
         b.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        // Elimina el recuadro punteado que suele aparecer alrededor del texto cuando haces clic en un boton, esto hace el diseño mas limpio
         b.setFocusPainted(false);
-        // dibuja un borde solido de color cian con un grosor de 1 pixel
         b.setBorder(new LineBorder(Color.CYAN, 1));
-        // cambia el icono del raton a una "manita" cuando el cursor pasa sobre el boton, indicando claramente que es un elemento clicable
         b.setCursor(new Cursor(Cursor.HAND_CURSOR));
         b.addMouseListener(new MouseAdapter() {
-        	// añade un escuchador de eventos del raton para crear un efecto de iluminacion
-        	
-        	// Cuando el ratón entra en el área del botón, el fondo se aclara ligeramente (pasa a un gris más claro). 
-        	//Esto da feedback visual al usuario.
             public void mouseEntered(MouseEvent e) { b.setBackground(new Color(60, 60, 70)); }
-            
-            // Cuando el ratón sale del botón, el color vuelve a su estado original oscuro.
             public void mouseExited(MouseEvent e) { b.setBackground(new Color(40, 40, 50)); }
         });
     }
 
-    
-    
-    // Este método es una función auxiliar de diseño.
-    // Su objetivo es automatizar la creación de filas de estadísticas en la interfaz del perfil, 
-    // evitando repetir el código cada vez que quieres mostrar un dato (como "Jugador", "Puntos Snake", etc.).
-   
-    /*
-     "Este método es un helper de interfaz que permite añadir de forma dinámica y elegante filas de información al perfil del usuario, 
-     garantizando que todos los datos tengan el mismo formato visual y facilitando el mantenimiento del código".
-     */
-    
-    
-    // JPanel p: El panel donde se van a meter los textos.
-    // String label: El nombre del dato (ej: "SNAKE:").
-    // String value: El valor del dato (ej: "500 pts").
-    // Font f: El tipo de letra que se va a usar.
-    // Color c: El color para el nombre del dato.
     private void addStatRow(JPanel p, String label, String value, Font f, Color c) {
-    	// Crea una etiqueta de texto (l1) con el nombre del dato.
-    	// Le aplica el color (c) que pasaste por parámetro (que suele ser cian).
-    	// Le asigna la fuente (f) para que el tamaño y estilo sean correctos.
         JLabel l1 = new JLabel(label); l1.setForeground(c); l1.setFont(f);
-        // Crea una segunda etiqueta (l2) con el valor o puntuación.
-        // A diferencia de la anterior, este texto siempre se pone en Color Blanco (Color.WHITE) para que resalte.
-        // Usa la misma fuente (f) para mantener la coherencia visual.
         JLabel l2 = new JLabel(value); l2.setForeground(Color.WHITE); l2.setFont(f);
-        // Añade ambas etiquetas al panel (p).
-        // Como el panel del perfil usa un GridLayout(0, 2), al añadir estas dos piezas, 
-        // Java las coloca automáticamente una al lado de la otra, formando una fila perfecta.
         p.add(l1); p.add(l2);
     }
 
     public static void main(String[] args) {
-    	// 514: Intenta que la app use el estilo visual del sistema.
         try { UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); } catch (Exception e) {}
-     // 515: Inicia Spring Boot pero desactiva el modo "headless" porque necesitamos monitor/ventana.
         ConfigurableApplicationContext context = new SpringApplicationBuilder(MenuPrincipal.class).headless(false).run(args);
-     // 516: Ejecuta el código visual en el hilo de eventos de Swing (Hilo seguro).
         SwingUtilities.invokeLater(() -> {
-        	// 517: Pide a Spring que le dé el objeto MenuPrincipal ya configurado.
             MenuPrincipal frame = context.getBean(MenuPrincipal.class);
-         // 518: Hace aparecer la ventana en pantalla.
             frame.setVisible(true);
         });
     }
