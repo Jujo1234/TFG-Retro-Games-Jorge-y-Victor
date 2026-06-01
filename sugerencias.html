@@ -24,8 +24,8 @@
     </div>
 
     <script>
-        // Dirección de tu servidor Node.js
-        const API_URL = "http://localhost:3000/api/sugerencias";
+        // Dirección de tu servidor Node.js corriendo 24/7 en la nube de Railway
+        const API_URL = "https://tfg-retro-games-jorge-y-victor-production.up.railway.app/api/sugerencias";
 
         // Función para cargar los comentarios desde el servidor
         async function cargar() {
@@ -35,7 +35,7 @@
                 
                 const lista = document.getElementById('lista-comentarios');
                 
-                if (datos.length === 0) {
+                if (!datos || datos.length === 0) {
                     lista.innerHTML = "<p style='color: #444; text-align: center;'>Aún no hay sugerencias. ¡Sé el primero!</p>";
                     return;
                 }
@@ -66,11 +66,15 @@
             }
 
             try {
-                await fetch(API_URL, {
+                const respuesta = await fetch(API_URL, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ usuario, comentario })
                 });
+
+                if (!respuesta.ok) {
+                    throw new Error("Error en la respuesta del servidor");
+                }
 
                 // Limpiar el campo de texto pero mantener el nombre para comodidad
                 comentarioInput.value = "";
@@ -78,7 +82,7 @@
                 // Refrescar la lista
                 cargar();
             } catch (error) {
-                alert("Error al conectar con el servidor. Asegúrate de que 'node server.js' está corriendo.");
+                alert("Error al conectar con el servidor en la nube. Por favor, inténtalo de nuevo más tarde.");
             }
         }
 
