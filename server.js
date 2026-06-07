@@ -4,7 +4,6 @@ const cors = require('cors');
 
 const app = express();
 
-// Configuración de CORS blindada para aceptar peticiones de cualquier sitio
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST'],
@@ -13,7 +12,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// 1. CONEXIÓN A MONGO (Nube de Railway)
+// 1. CONEXIÓN A MONGO
 const dbUser = "mongo";
 const dbPass = encodeURIComponent("yDeJzAJWwPBXaNbvoEaBdXwSvelCgGaH");
 const dbHost = "zephyr.proxy.rlwy.net";
@@ -31,7 +30,7 @@ mongoose.connect(uri)
             .catch(errFinal => console.error("💥 Error definitivo en MongoDB:", errFinal));
     });
 
-// 2. DEFINIR EL MODELO (Estructura de la sugerencia)
+// 2. DEFINIR EL MODELO
 const SugerenciaSchema = new mongoose.Schema({
     usuario: String,
     comentario: String,
@@ -62,6 +61,5 @@ app.post('/api/sugerencias', async (req, res) => {
     }
 });
 
-// 4. ARRANCAR SERVIDOR (Configurado para detectar el puerto automático de Railway o usar el 3000 en tu PC)
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor corriendo en el puerto ${PORT}`));
+// Arrancar servidor
+app.listen(3000, () => console.log("🚀 Servidor corriendo en http://localhost:3000"));
